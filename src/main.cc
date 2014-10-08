@@ -4,25 +4,26 @@
 
 #include "picojson/picojson.h"
 
+namespace json = picojson;
 
 int main() {
 
-  picojson::value v;
+  json::value v;
   std::cin >> v;
   if (std::cin.fail()) {
-    std::cerr << picojson::get_last_error() << std::endl;
+    std::cerr << json::get_last_error() << std::endl;
     return 1;
   }
 
 
   size_t sentence_count = 0;
-  auto & sentences = v.get<picojson::object>()["sentences"].get<picojson::array>();
+  auto & sentences = v.get<json::object>()["sentences"].get<json::array>();
   for (auto & s : sentences) {
     ++sentence_count;
     std::cout << "sentence "
               << sentence_count
               << " size: "
-              << s.get<picojson::object>()["words"].get<picojson::array>().size()
+              << s.get<json::object>()["words"].get<json::array>().size()
               << std::endl;
   }
 
