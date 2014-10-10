@@ -2,11 +2,24 @@
 #include <iostream>
 #include <iterator>
 
-#include <experimental/optional>
-
 #include <json11/json11.hpp>
-
 using json = json11::Json;
+
+
+
+typedef std::string word_type;
+typedef std::string pos_type;
+
+class anchored_tree {
+};
+
+class parsed_sentence {
+public:
+  anchored_tree tree();
+  std::vector<word_type> words();
+  std::vector<pos_type> tags();
+};
+
 
 int main() {
 
