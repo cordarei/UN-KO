@@ -13,7 +13,11 @@ int main() {
   std::string err;
   std::string allinput;
   allinput.reserve(1024);
-  std::copy(std::istream_iterator<char>(std::cin), std::istream_iterator<char>(), std::back_inserter(allinput));
+  std::copy(
+            std::istreambuf_iterator<char>(std::cin),
+            std::istreambuf_iterator<char>(),
+            std::back_inserter(allinput)
+            );
 
   json v = json::parse(allinput, err);
 
