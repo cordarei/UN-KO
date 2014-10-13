@@ -7,8 +7,9 @@ using json = json11::Json;
 
 
 
-typedef std::string word_type;
-typedef std::string pos_type;
+typedef std::string word_t;
+typedef std::string symbol_t;
+typedef std::string pos_t;
 
 class anchored_tree {
 };
@@ -16,8 +17,8 @@ class anchored_tree {
 class parsed_sentence {
 public:
   anchored_tree tree();
-  std::vector<word_type> words();
-  std::vector<pos_type> tags();
+  std::vector<word_t> words();
+  std::vector<pos_t> tags();
 };
 
 
