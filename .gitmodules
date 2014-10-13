@@ -1,0 +1,6 @@
+[submodule "external/asl"]
+	path = external/asl
+	url = git://github.com/stlab/adobe_source_libraries
+[submodule "external/ftl"]
+	path = external/ftl
+	url = git://github.com/beark/ftl
