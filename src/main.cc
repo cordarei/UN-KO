@@ -90,9 +90,9 @@ int main() {
     auto const & jspans = s["parse"]["spans"].array_items();
     spans.reserve(jspans.size());
     std::transform(begin(jspans),
-                  end(jspans),
-                  std::back_inserter(spans),
-                  [](auto js) { return span_t(js[0].string_value(), js[1].int_value(), js[2].int_value()); });
+                   end(jspans),
+                   std::back_inserter(spans),
+                   [](auto js) { return span_t((js[0].is_string() ? js[0].string_value() : "<t>"), js[1].int_value(), js[2].int_value()); });
 
     std::cout << "sentence "
               << sentence_count
