@@ -1,3 +1,14 @@
+include_rules
+
 .gitignore
 
-: src/main.cc external/json11/json11.cpp |> g++ -std=c++1y -I external -o foo %f |> foo
+
+# libfoo
+: lib/*.o |> ar crs %o %f |> libfoo.a
+
+# external source files
+: external/json11/json11.cpp |> |> {EXT_SRC}
+: foreach {EXT_SRC} |> !cxx |> {EXT_BIN}
+
+# main executable
+: src/*.o libfoo.a {EXT_BIN} |> $(CXX) $(CXXFLAGS) %f -o %o |> foo

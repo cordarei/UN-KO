@@ -6,50 +6,8 @@
 using json = json11::Json;
 
 
-
-typedef std::string word_t;
-typedef std::string symbol_t;
-typedef std::string pos_t;
-typedef size_t offset_t;
-
-class span_t {
-public:
-  span_t(symbol_t l, offset_t b, offset_t e)
-    : _label{l}, _begin{b}, _end{e}
-  {}
-
-  symbol_t const & label() const { return _label; }
-  offset_t begin() const { return _begin; }
-  offset_t end() const { return _end; }
-
-private:
-  symbol_t _label;
-  offset_t _begin;
-  offset_t _end;
-};
-
-std::ostream & operator<<(std::ostream &out, span_t const &span) {
-  out << span.label() << ":[" << span.begin() << "," << span.end() << "]";
-  return out;
-}
-
-class anchored_tree {
-};
-
-class parsed_sentence {
-public:
-  parsed_sentence() = delete;
-  parsed_sentence(std::vector<word_t> words, std::vector<pos_t> tags, anchored_tree tree);
-
-  anchored_tree const & tree();
-  std::vector<word_t> const & words();
-  std::vector<pos_t> const & tags();
-
-private:
-  std::vector<word_t> _words;
-  std::vector<pos_t> _tags;
-  anchored_tree _tree;
-};
+#include <foo/foo.h>
+using namespace foo;
 
 
 int main() {
