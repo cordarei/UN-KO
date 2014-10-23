@@ -1,8 +1,5 @@
 include_rules
 
-.gitignore
-
-
 # libfoo
 : lib/*.o |> ar crs %o %f |> libfoo.a
 

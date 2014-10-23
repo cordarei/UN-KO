@@ -1,9 +1,10 @@
-
 INCLUDES += -I$(TUP_CWD)/external -I$(TUP_CWD)/include
 WARNINGS += -Wall -Wextra
 CXXSTD = -std=c++1y
 CXXFLAGS += $(CXXSTD) $(WARNINGS) $(INCLUDES)
 CXX = g++
 
-
 !cxx = |> $(CXX) $(CXXFLAGS) -c %f -o %o |> %B.o
+
+
+.gitignore
