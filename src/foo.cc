@@ -31,6 +31,7 @@ constexpr auto USAGE =
 #include <foo/foo.h>
 using namespace foo;
 
+
 int main(int argc, const char** argv) {
 
   auto args = docopt::docopt(USAGE,
