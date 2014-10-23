@@ -5,6 +5,7 @@ include_rules
 
 # external source files
 : external/json11/json11.cpp |> |> {EXT_SRC}
+: external/docopt/docopt.cpp |> |> {EXT_SRC}
 : foreach {EXT_SRC} |> !cxx |> {EXT_BIN}
 
 # main executable

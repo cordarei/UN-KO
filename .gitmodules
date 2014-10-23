@@ -1,0 +1,3 @@
+[submodule "external/docopt"]
+	path = external/docopt
+	url = git://github.com/cordarei/docopt.cpp

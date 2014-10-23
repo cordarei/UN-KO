@@ -3,25 +3,42 @@
 #include <iterator>
 
 #include <json11/json11.hpp>
-using json = json11::Json;
+json11::Json read_json(std::istream& is) {
+  std::string err;
+  std::string allinput;
+  allinput.reserve(1024);
+
+  std::copy(
+            std::istreambuf_iterator<char>(is),
+            std::istreambuf_iterator<char>(),
+            std::back_inserter(allinput)
+            );
+
+  return json11::Json::parse(allinput, err);
+}
+
+
+#include <docopt/docopt.h>
+constexpr auto USAGE =
+  u8R"(foo
+
+    Usage:
+      foo [ARG...]
+
+)";
 
 
 #include <foo/foo.h>
 using namespace foo;
 
+int main(int argc, const char** argv) {
 
-int main() {
+  auto args = docopt::docopt(USAGE,
+                             { argv + 1, argv + argc },
+                             true,
+                             u8"foo -∞");
 
-  std::string allinput;
-  allinput.reserve(1024);
-  std::copy(
-            std::istreambuf_iterator<char>(std::cin),
-            std::istreambuf_iterator<char>(),
-            std::back_inserter(allinput)
-            );
-
-  std::string err;
-  json v = json::parse(allinput, err);
+  auto v = read_json(std::cin);
 
   size_t sentence_count = 0;
   auto & sentences = v["sentences"].array_items();
