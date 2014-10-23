@@ -6,7 +6,7 @@
 json11::Json read_json(std::istream& is) {
   std::string err;
   std::string allinput;
-  allinput.reserve(1024);
+  allinput.reserve(4096);
 
   std::copy(
             std::istreambuf_iterator<char>(is),
