@@ -1,4 +1,5 @@
 #include <catch/catch.hpp>
+#include <iostream>
 
 #include <json11/json11.hpp>
 
@@ -38,22 +39,24 @@ TEST_CASE("we can parse the JSON") {
 
 using std::begin;
 
-template<typename RangeLike>
-struct begin_iterator_type {
-  typedef decltype(begin(std::declval<RangeLike>())) type;
-};
-template<typename RangeLike>
-struct value_type {
-  typedef decltype(*std::declval<typename begin_iterator_type<RangeLike>::type>()) dereferenced_type;
-  typedef typename std::remove_reference<dereferenced_type>::type type;
-};
 
-template<typename RangeLike, typename Value = typename value_type<RangeLike>::type>
+template<typename RangeLike, typename Value = std::decay_t<decltype(*begin(std::declval<RangeLike>()))>>
 std::vector<Value> make_vector(RangeLike const& r) {
   return std::vector<Value>(begin(r), end(r));
 }
 
 
+template<typename T, typename ...Us>
+struct is_one_of;
+
+template<typename T>
+struct is_one_of<T> : std::false_type {};
+
+template<typename T, typename ...Us>
+struct is_one_of<T, T, Us...> : std::true_type {};
+
+template<typename T, typename U, typename ...Vs>
+struct is_one_of<T, U, Vs...> : is_one_of<T, Vs...> {};
 
 
 namespace json {
@@ -67,25 +70,44 @@ namespace json {
     T operator()(value const &v) { return json_cast<T>(v); }
   };
 
-  // template<typename T>
-  // auto as = as_t<T>{};
+  template<typename T>
+  auto as = as_t<T>{};
 
   struct all_indexer_t {} all;
 
-  struct jpath {
-    jpath() {}
-    // Index can be any type useable for indexing into a json object: integer, string, or all_indexer_t
-    template<typename Index>
-    jpath(Index index) {}
-    template<typename Index, typename ...Rest>
-    jpath(Index index, Rest... rest) {}
+  template<typename ...Indexes>
+  struct jpath_t : std::tuple<Indexes...> {
+    // // Index can be any type useable for indexing into a json object: integer, string, or all_indexer_t
+    // template<typename Index>
+    // jpath(Index index) {}
+    // template<typename Index, typename ...Rest>
+    // jpath(Index index, Rest... rest) {}
+    using base_type = std::tuple<Indexes...>;
+    using base_type::base_type;
 
-    value operator()(value const& v) { return v; }
     template<typename T>
-    T operator()(value const& v, as_t<T>) { return T{}; }
+    struct range {
+      T* begin() const { return nullptr; }
+      T* end() const { return nullptr; }
+    };
+
+    template<typename T>
+    using return_type = std::conditional_t<is_one_of<all_indexer_t, std::decay_t<Indexes>...>::value,
+                                           range<T>,
+                                           T>;
+
+    return_type<value> operator()(value const& v) { return {}; }
+    template<typename T>
+    return_type<T> operator()(value const& v, as_t<T>) { return {}; }
   };
+
+  template<typename ...Indexes>
+  auto jpath(Indexes &&...indexes) -> jpath_t<std::decay_t<Indexes>...> {
+    return jpath_t<Indexes...>{std::forward<Indexes>(indexes)...};
+  }
 }
 
+#include <type_name/type_name.h>
 
 TEST_CASE("values can be extracted") {
   using namespace std::literals::string_literals;
@@ -94,8 +116,13 @@ TEST_CASE("values can be extracted") {
   auto v = get_json();
   auto path = jpath("sentences", all, "words", 3);
   auto x = path(v, as_t<std::string>());
-  auto vec = make_vector(x);
+  auto y = path(v);
+  //auto vec = make_vector(x);
+  //static_assert(std::is_same<decltype(x), jpath_t<std::string, all_indexer_t, std::string, int>::range<std::string>>::value, "oops");
+  std::cout << type_name<decltype(path)>() << std::endl; //what's the type of x?
+  std::cout << type_name<decltype(x)>() << std::endl; //what's the type of x?
+  std::cout << type_name<decltype(path(v))>() << std::endl; //what's the type of x?
 
   //v.sentences[].words[3] == ["one"s, "two"s]
-  //REQUIRE(vec == make_vector({"one"s, "two"s}));
+  //REQUIRE(vec == (std::vector<std::string>{{"one"s, "two"s}}));
 }
