@@ -3,6 +3,7 @@
 
 #include <json11/json11.hpp>
 
+
 constexpr auto JSON_STRING =
   u8R"({"sentences" : [
   {
@@ -35,6 +36,21 @@ TEST_CASE("we can parse the JSON") {
   REQUIRE(v["sentences"][0]["words"][3].string_value() == "one");
   REQUIRE(v["sentences"][1]["words"][3].string_value() == "two");
 }
+
+
+
+
+
+
+
+/*
+ *
+ * The following is a misguided and incomplete attempt to make JSON
+ * (and the Json11 library) nicer to work with in C++. I don't have
+ * any more time to spend on this at the moment, but eventually I
+ * would like to finish it.
+ *
+ */
 
 
 using std::begin;
@@ -96,9 +112,9 @@ namespace json {
                                            range<T>,
                                            T>;
 
-    return_type<value> operator()(value const& v) { return {}; }
+    return_type<value> operator()(value const&) { return {}; }
     template<typename T>
-    return_type<T> operator()(value const& v, as_t<T>) { return {}; }
+    return_type<T> operator()(value const&, as_t<T>) { return {}; }
   };
 
   template<typename ...Indexes>
@@ -117,12 +133,12 @@ TEST_CASE("values can be extracted") {
   auto path = jpath("sentences", all, "words", 3);
   auto x = path(v, as_t<std::string>());
   auto y = path(v);
-  //auto vec = make_vector(x);
-  //static_assert(std::is_same<decltype(x), jpath_t<std::string, all_indexer_t, std::string, int>::range<std::string>>::value, "oops");
-  std::cout << type_name<decltype(path)>() << std::endl; //what's the type of x?
-  std::cout << type_name<decltype(x)>() << std::endl; //what's the type of x?
-  std::cout << type_name<decltype(path(v))>() << std::endl; //what's the type of x?
+  auto vec = make_vector(x);
+  // std::cout << type_name<decltype(path)>() << std::endl; //what's the type of x?
+  // std::cout << type_name<decltype(x)>() << std::endl; //what's the type of x?
+  // std::cout << type_name<decltype(path(v))>() << std::endl; //what's the type of x?
 
   //v.sentences[].words[3] == ["one"s, "two"s]
-  //REQUIRE(vec == (std::vector<std::string>{{"one"s, "two"s}}));
+  auto answer = std::vector<std::string>{"one"s, "two"s};
+  REQUIRE(vec == std::vector<std::string>{}); //REQUIRE(vec == answer);
 }
