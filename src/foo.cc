@@ -2,94 +2,69 @@
 #include <iostream>
 #include <iterator>
 
-#include <json11/json11.hpp>
-json11::Json read_json(std::istream& is) {
-  std::string err;
-  std::string allinput;
-  allinput.reserve(4096);
 
-  std::copy(
-            std::istreambuf_iterator<char>(is),
-            std::istreambuf_iterator<char>(),
-            std::back_inserter(allinput)
-            );
+constexpr auto USAGE =
+u8R"(  foo
 
-  return json11::Json::parse(allinput, err);
-}
+  Usage:
+    foo classifier train
+    foo classifier run
+    foo classifier test
+    foo parser extract-grammar
+    foo parser run
+)";
+constexpr auto VERSION = u8"foo 0.0.0";
 
 
 #include <docopt/docopt.h>
-constexpr auto USAGE =
-  u8R"(foo
+using docopt_t = decltype(docopt::docopt({}, {}));
+using docopt::get;
 
-    Usage:
-      foo [ARG...]
+bool check_docopt_flag(docopt_t const &opt, std::string const &flag) {
+  return opt.at(flag).isBool() && get<bool>(opt.at(flag));
+}
 
-)";
+/*
+ * `opt`: the std::map returned from docopt::docopt() or docopt::docopt_parse()
+ * `commands`: list of <command>, <sub-command>, <sub-sub-command>, etc
+ *
+ * Returns: true if the given commands matches the command parsed by docopt, false otherwise
+ */
+bool check_docopt_command(docopt_t const &opt, std::vector<std::string> commands) {
+  return std::all_of(std::begin(commands),
+                     std::end(commands),
+                     [&](auto cmd) { return check_docopt_flag(opt, cmd); });
+}
 
 
-#include <foo/foo.h>
-using namespace foo;
-
+#include "classifier/classifier.h"
+#include "parser/parser.h"
 
 int main(int argc, const char** argv) {
-
   auto args = docopt::docopt(USAGE,
                              { argv + 1, argv + argc },
                              true,
-                             u8"foo -∞");
+                             VERSION);
 
-  auto v = read_json(std::cin);
-
-  size_t sentence_count = 0;
-  auto & sentences = v["sentences"].array_items();
-  for (auto & s : sentences) {
-    ++sentence_count;
-
-    std::vector<word_t> words;
-    words.reserve(s["words"].array_items().size());
-    std::transform(begin(s["words"].array_items()),
-                   end(s["words"].array_items()),
-                   std::back_inserter(words),
-                   [](auto js) { return js.string_value(); }
-                   );
-
-    std::vector<pos_t> tags;
-    tags.reserve(s["tags"].array_items().size());
-    std::transform(begin(s["tags"].array_items()),
-                   end(s["tags"].array_items()),
-                   std::back_inserter(tags),
-                   [](auto js) { return js.string_value(); }
-                   );
-
-    std::vector<span_t> spans;
-    auto const & jspans = s["parse"]["spans"].array_items();
-    spans.reserve(jspans.size());
-    std::transform(begin(jspans),
-                   end(jspans),
-                   std::back_inserter(spans),
-                   [](auto js) { return span_t((js[0].is_string() ? js[0].string_value() : "<t>"), js[1].int_value(), js[2].int_value()); });
-
-    std::cout << "sentence "
-              << sentence_count
-              << " num_words: "
-              << words.size()
-              << " num_tags: "
-              << tags.size()
-              << " num_spans: "
-              << spans.size()
-              << std::endl;
-
-    for (auto const &edge : s["parse"]["edges"].array_items()) {
-      auto const & head_span = spans[edge[0].int_value()];
-      std::cout << "Edge: " << head_span << " =>";
-      for (auto const &c : edge[1].array_items()) {
-        std::cout << " " << spans[c.int_value()];
-      }
-      std::cout << std::endl;
-    }
-
+  if (check_docopt_command(args, {"classifier", "train"})) {
+    std::cout << "training classifier" << std::endl;
+    return classifier::train();
+  }
+  if (check_docopt_command(args, {"classifier", "test"})) {
+    std::cout << "testing classifier" << std::endl;
+    return classifier::test();
+  }
+  if (check_docopt_command(args, {"classifier", "run"})) {
+    std::cout << "running classifier" << std::endl;
+    return classifier::run();
   }
 
-  return 0;
+  if (check_docopt_command(args, {"parser", "extract-grammar"})) {
+    std::cout << "extracting grammar with parser" << std::endl;
+    return parser::extract_grammar();
+  }
+  if (check_docopt_command(args, {"parser", "run"})) {
+    std::cout << "running parser" << std::endl;
+    return parser::run();
+  }
 }
