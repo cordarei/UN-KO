@@ -1,3 +1,6 @@
 [submodule "external/docopt"]
 	path = external/docopt
 	url = git://github.com/cordarei/docopt.cpp
+[submodule "external/range"]
+	path = external/range
+	url = git://github.com/ericniebler/range-v3
