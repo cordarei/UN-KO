@@ -6,6 +6,7 @@ CXX = clang++ -fcolor-diagnostics
 #CXX = g++
 
 !cxx = |> $(CXX) $(CXXFLAGS) -c %f -o %o |> %B.o
-
+!exe = |> $(CXX) $(CXXFLAGS) %f -o %o |>
+!ar =  |> ar crs %o %f |>
 
 .gitignore

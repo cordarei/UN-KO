@@ -1,5 +1,10 @@
+#ifndef FOO_SRC_CLASSIFIER_CLASSIFIER_H
+#define FOO_SRC_CLASSIFIER_CLASSIFIER_H
+
 namespace classifier {
-  int train() { return 0; }
-  int test() { return 0; }
-  int run() { return 0; }
+  int train();
+  int test();
+  int run();
 }
+
+#endif

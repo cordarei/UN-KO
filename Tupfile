@@ -1,12 +1,16 @@
 include_rules
 
 # libfoo
-: lib/*.o |> ar crs %o %f |> libfoo.a
+: lib/*.o |> !ar |> libfoo.a
 
 # external source files
 : external/json11/json11.cpp |> |> {EXT_SRC}
 : external/docopt/docopt.cpp |> |> {EXT_SRC}
-: foreach {EXT_SRC} |> !cxx |> {EXT_BIN}
+: foreach {EXT_SRC} |> !cxx |> {EXT_OBJ}
 
 # main executable
-: src/*.o libfoo.a {EXT_BIN} |> $(CXX) $(CXXFLAGS) %f -o %o |> foo
+: src/*.o |> |> {OBJ}
+: src/parser/*.o |> |> {OBJ}
+: src/classifier/*.o |> |> {OBJ}
+: {EXT_OBJ} |> |> {OBJ}
+: {OBJ} libfoo.a |> !exe |> foo
