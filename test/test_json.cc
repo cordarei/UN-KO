@@ -3,6 +3,7 @@
 
 #include <json11/json11.hpp>
 
+#include <range/v3/view.hpp>
 
 constexpr auto JSON_STRING =
   u8R"({"sentences" : [
@@ -38,7 +39,41 @@ TEST_CASE("we can parse the JSON") {
 }
 
 
+template<typename Rng, typename P = ranges::ident,
+         typename V1 = ranges::range_value_t<Rng>,
+         typename V2 = std::decay_t<
+           decltype(
+                    ranges::invokable(std::declval<P>())(
+                                                         std::declval<V1>()
+                                                         )
+                    )
+           >,
+         CONCEPT_REQUIRES_(ranges::InputIterable<Rng>() &&
+                           ranges::Invokable<P, V1>())>
+std::vector<V2> make_vector(Rng &r, P proj_ = P{}) {
+  auto && proj = ranges::invokable(proj_);
+  return r | ranges::view::transform(proj);
+}
 
+
+struct example {
+  std::vector<std::string> tags;
+};
+bool operator==(example const &l, example const &r) {
+  return l.tags == r.tags;
+}
+
+TEST_CASE("we can read the JSON into structs") {
+  auto j = get_json();
+  auto v = make_vector(j["sentences"].array_items(), [](auto k) {
+      return example{make_vector(k["words"].array_items(), &json11::Json::string_value)};
+    });
+  auto u = std::vector<example>{
+            {{"DT", "VB", "NN", "NN", "."}},
+            {{"DT", "VB", "NN", "NN", "."}}
+  };
+  REQUIRE(v == u);
+}
 
 
 
@@ -53,13 +88,11 @@ TEST_CASE("we can parse the JSON") {
  */
 
 
-using std::begin;
-
-
-template<typename RangeLike, typename Value = std::decay_t<decltype(*begin(std::declval<RangeLike>()))>>
-std::vector<Value> make_vector(RangeLike const& r) {
-  return std::vector<Value>(begin(r), end(r));
-}
+// template<typename RangeLike, typename Value = std::decay_t<decltype(*begin(std::declval<RangeLike>()))>>
+// std::vector<Value> make_vector(RangeLike const& r) {
+//   using std::begin;
+//   return std::vector<Value>(begin(r), end(r));
+// }
 
 
 template<typename T, typename ...Us>

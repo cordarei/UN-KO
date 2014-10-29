@@ -3,14 +3,67 @@
 #include <iostream>
 #include <algorithm>
 
+#include <range/v3/range_fwd.hpp>
+#include <range/v3/range_facade.hpp>
+#include <range/v3/numeric.hpp>
 #include <json11/json11.hpp>
 #include <foo/foo.h>
 
 using namespace foo;
 
+  struct lines_range : ranges::range_facade<lines_range> {
+  private:
+    friend ranges::range_access;
+    std::string _line;
+    std::istream *_is;
+    struct cursor {
+    private:
+      lines_range *_rng;
+    public:
+      cursor() = default;
+      explicit cursor(lines_range &rng)
+        : _rng(&rng)
+      {}
+
+      void next() {
+        std::getline(*_rng->_is, _rng->_line);
+      }
+      std::string const &current() const {
+        return _rng->_line;
+      }
+      bool done() const {
+        return !*_rng->_is;
+      }
+    };
+    cursor begin_cursor() { return cursor{*this}; }
+  public:
+    lines_range() = default;
+    lines_range(std::istream &is)
+      : _is(&is)
+    {
+      std::getline(*_is, _line);
+    }
+    std::string &cached() { return _line; }
+  };
+
+  lines_range lines(std::istream &is) { return lines_range{is}; }
+
+  std::string read_all(std::istream &is) {
+    return ranges::accumulate(lines(is), std::string{});
+  }
+
 namespace {
   //↓temporary code
-  json11::Json read_json(std::istream&) { return {}; }
+  json11::Json read_json(std::istream& is) {
+    std::string err;
+    return json11::Json::parse(read_all(is), err);
+  }
+
+  struct instance {
+    std::vector<word_t> words;
+    std::vector<pos_t> tags;
+    std::vector<span_t> top_spans;
+  };
 
   void create_instances() {
     auto v = read_json(std::cin);
@@ -67,6 +120,14 @@ namespace {
 }
 
 
-int classifier::train() { return 0; }
+int classifier::train() {
+  //set up features
+  //read in training file (JSON) and create instances
+  //train weights using averaged perceptron
+  //save weights and features
+  return 0;
+}
+
+
 int classifier::test() { return 0; }
 int classifier::run() { return 0; }
