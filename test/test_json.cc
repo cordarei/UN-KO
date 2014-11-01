@@ -3,7 +3,7 @@
 
 #include <json11/json11.hpp>
 
-#include <range/v3/view.hpp>
+#include <range/v3/view/transform.hpp>
 
 constexpr auto JSON_STRING =
   u8R"({"sentences" : [
@@ -62,11 +62,14 @@ struct example {
 bool operator==(example const &l, example const &r) {
   return l.tags == r.tags;
 }
+std::string toString(example const& e) {
+  return Catch::toString(e.tags);
+}
 
 TEST_CASE("we can read the JSON into structs") {
   auto j = get_json();
   auto v = make_vector(j["sentences"].array_items(), [](auto k) {
-      return example{make_vector(k["words"].array_items(), &json11::Json::string_value)};
+      return example{make_vector(k["tags"].array_items(), &json11::Json::string_value)};
     });
   auto u = std::vector<example>{
             {{"DT", "VB", "NN", "NN", "."}},
@@ -88,11 +91,6 @@ TEST_CASE("we can read the JSON into structs") {
  */
 
 
-// template<typename RangeLike, typename Value = std::decay_t<decltype(*begin(std::declval<RangeLike>()))>>
-// std::vector<Value> make_vector(RangeLike const& r) {
-//   using std::begin;
-//   return std::vector<Value>(begin(r), end(r));
-// }
 
 
 template<typename T, typename ...Us>
@@ -156,7 +154,7 @@ namespace json {
   }
 }
 
-#include <type_name/type_name.h>
+//#include <type_name/type_name.h>
 
 TEST_CASE("values can be extracted") {
   using namespace std::literals::string_literals;

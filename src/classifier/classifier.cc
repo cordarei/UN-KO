@@ -3,53 +3,53 @@
 #include <iostream>
 #include <algorithm>
 
-#include <range/v3/range_fwd.hpp>
-#include <range/v3/range_facade.hpp>
 #include <range/v3/numeric.hpp>
+#include <range/v3/lines_range.hpp>
 #include <json11/json11.hpp>
 #include <foo/foo.h>
 
 using namespace foo;
 
-  struct lines_range : ranges::range_facade<lines_range> {
-  private:
-    friend ranges::range_access;
-    std::string _line;
-    std::istream *_is;
-    struct cursor {
-    private:
-      lines_range *_rng;
-    public:
-      cursor() = default;
-      explicit cursor(lines_range &rng)
-        : _rng(&rng)
-      {}
+  // struct lines_range : ranges::range_facade<lines_range> {
+  // private:
+  //   friend ranges::range_access;
+  //   std::string _line;
+  //   std::istream *_is;
+  //   struct cursor {
+  //   private:
+  //     lines_range *_rng;
+  //   public:
+  //     cursor() = default;
+  //     explicit cursor(lines_range &rng)
+  //       : _rng(&rng)
+  //     {}
 
-      void next() {
-        std::getline(*_rng->_is, _rng->_line);
-      }
-      std::string const &current() const {
-        return _rng->_line;
-      }
-      bool done() const {
-        return !*_rng->_is;
-      }
-    };
-    cursor begin_cursor() { return cursor{*this}; }
-  public:
-    lines_range() = default;
-    lines_range(std::istream &is)
-      : _is(&is)
-    {
-      std::getline(*_is, _line);
-    }
-    std::string &cached() { return _line; }
-  };
+  //     void next() {
+  //       std::getline(*_rng->_is, _rng->_line);
+  //     }
+  //     std::string const &current() const {
+  //       return _rng->_line;
+  //     }
+  //     bool done() const {
+  //       return !*_rng->_is;
+  //     }
+  //   };
+  //   cursor begin_cursor() { return cursor{*this}; }
+  // public:
+  //   lines_range() = default;
+  //   lines_range(std::istream &is)
+  //     : _is(&is)
+  //   {
+  //     std::getline(*_is, _line);
+  //   }
+  //   std::string &cached() { return _line; }
+  // };
 
-  lines_range lines(std::istream &is) { return lines_range{is}; }
+  // lines_range lines(std::istream &is) { return lines_range{is}; }
 
   std::string read_all(std::istream &is) {
-    return ranges::accumulate(lines(is), std::string{});
+    return ranges::accumulate(ranges::lines(is), std::string{});
+    // return ranges::accumulate(lines(is), std::string{}, [](std::string a, std::string& b) { return a + b; });
   }
 
 namespace {

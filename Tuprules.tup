@@ -3,7 +3,7 @@ WARNINGS += -Wall -Wextra
 CXXSTD = -std=c++1y
 CXXFLAGS += $(CXXSTD) $(WARNINGS) $(INCLUDES)
 CXX = clang++ -fcolor-diagnostics
-#CXX = g++
+# CXX = g++ -fdiagnostics-color=always
 
 !cxx = |> $(CXX) $(CXXFLAGS) -c %f -o %o |> %B.o
 !exe = |> $(CXX) $(CXXFLAGS) %f -o %o |>
