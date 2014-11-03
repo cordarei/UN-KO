@@ -3,7 +3,7 @@
 
 #include <json11/json11.hpp>
 
-#include <range/v3/view/transform.hpp>
+#include <foo/container.h>
 
 constexpr auto JSON_STRING =
   u8R"({"sentences" : [
@@ -39,23 +39,6 @@ TEST_CASE("we can parse the JSON") {
 }
 
 
-template<typename Rng, typename P = ranges::ident,
-         typename V1 = ranges::range_value_t<Rng>,
-         typename V2 = std::decay_t<
-           decltype(
-                    ranges::invokable(std::declval<P>())(
-                                                         std::declval<V1>()
-                                                         )
-                    )
-           >,
-         CONCEPT_REQUIRES_(ranges::InputIterable<Rng>() &&
-                           ranges::Invokable<P, V1>())>
-std::vector<V2> make_vector(Rng &r, P proj_ = P{}) {
-  auto && proj = ranges::invokable(proj_);
-  return r | ranges::view::transform(proj);
-}
-
-
 struct example {
   std::vector<std::string> tags;
 };
@@ -68,8 +51,8 @@ std::string toString(example const& e) {
 
 TEST_CASE("we can read the JSON into structs") {
   auto j = get_json();
-  auto v = make_vector(j["sentences"].array_items(), [](auto k) {
-      return example{make_vector(k["tags"].array_items(), &json11::Json::string_value)};
+  auto v = foo::make_vector(j["sentences"].array_items(), [](auto k) {
+      return example{foo::make_vector(k["tags"].array_items(), &json11::Json::string_value)};
     });
   auto u = std::vector<example>{
             {{"DT", "VB", "NN", "NN", "."}},
@@ -164,7 +147,7 @@ TEST_CASE("values can be extracted") {
   auto path = jpath("sentences", all, "words", 3);
   auto x = path(v, as_t<std::string>());
   auto y = path(v);
-  auto vec = make_vector(x);
+  auto vec = foo::make_vector(x);
   // std::cout << type_name<decltype(path)>() << std::endl; //what's the type of x?
   // std::cout << type_name<decltype(x)>() << std::endl; //what's the type of x?
   // std::cout << type_name<decltype(path(v))>() << std::endl; //what's the type of x?
