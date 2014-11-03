@@ -1,4 +1,0 @@
-include_rules
-
-: foreach *.cc |> !cxx |>
-: *.o ../json11.o |> $(CXX) $(CXXFLAGS) %f -o %o |> test

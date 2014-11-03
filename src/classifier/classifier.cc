@@ -6,58 +6,24 @@
 #include <range/v3/numeric.hpp>
 #include <range/v3/lines_range.hpp>
 #include <json11/json11.hpp>
+
 #include <foo/foo.h>
+#include "../common.h"
 
-using namespace foo;
-
-  // struct lines_range : ranges::range_facade<lines_range> {
-  // private:
-  //   friend ranges::range_access;
-  //   std::string _line;
-  //   std::istream *_is;
-  //   struct cursor {
-  //   private:
-  //     lines_range *_rng;
-  //   public:
-  //     cursor() = default;
-  //     explicit cursor(lines_range &rng)
-  //       : _rng(&rng)
-  //     {}
-
-  //     void next() {
-  //       std::getline(*_rng->_is, _rng->_line);
-  //     }
-  //     std::string const &current() const {
-  //       return _rng->_line;
-  //     }
-  //     bool done() const {
-  //       return !*_rng->_is;
-  //     }
-  //   };
-  //   cursor begin_cursor() { return cursor{*this}; }
-  // public:
-  //   lines_range() = default;
-  //   lines_range(std::istream &is)
-  //     : _is(&is)
-  //   {
-  //     std::getline(*_is, _line);
-  //   }
-  //   std::string &cached() { return _line; }
-  // };
-
-  // lines_range lines(std::istream &is) { return lines_range{is}; }
-
+namespace {
   std::string read_all(std::istream &is) {
     return ranges::accumulate(ranges::lines(is), std::string{});
     // return ranges::accumulate(lines(is), std::string{}, [](std::string a, std::string& b) { return a + b; });
   }
 
-namespace {
-  //↓temporary code
   json11::Json read_json(std::istream& is) {
     std::string err;
     return json11::Json::parse(read_all(is), err);
   }
+}
+
+namespace foo {
+namespace classifier {
 
   struct instance {
     std::vector<word_t> words;
@@ -65,6 +31,7 @@ namespace {
     std::vector<span_t> top_spans;
   };
 
+  //↓temporary code
   void create_instances() {
     auto v = read_json(std::cin);
 
@@ -117,10 +84,9 @@ namespace {
       }
     }
   }
-}
 
 
-int classifier::train() {
+int train() {
   //set up features
   //read in training file (JSON) and create instances
   //train weights using averaged perceptron
@@ -128,6 +94,8 @@ int classifier::train() {
   return 0;
 }
 
+int test() { return 0; }
+int run() { return 0; }
 
-int classifier::test() { return 0; }
-int classifier::run() { return 0; }
+} //namespace classifier
+} //namespace foo

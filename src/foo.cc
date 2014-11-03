@@ -1,6 +1,8 @@
-#include <algorithm>
 #include <iostream>
-#include <iterator>
+
+#include "common.h"
+#include "classifier/classifier.h"
+#include "parser/parser.h"
 
 
 constexpr auto USAGE =
@@ -16,31 +18,9 @@ u8R"(  foo
 constexpr auto VERSION = u8"foo 0.0.0";
 
 
-#include <docopt/docopt.h>
-using docopt_t = decltype(docopt::docopt({}, {}));
-using docopt::get;
-
-bool check_docopt_flag(docopt_t const &opt, std::string const &flag) {
-  return opt.at(flag).isBool() && get<bool>(opt.at(flag));
-}
-
-/*
- * `opt`: the std::map returned from docopt::docopt() or docopt::docopt_parse()
- * `commands`: list of <command>, <sub-command>, <sub-sub-command>, etc
- *
- * Returns: true if the given commands matches the command parsed by docopt, false otherwise
- */
-bool check_docopt_command(docopt_t const &opt, std::vector<std::string> commands) {
-  return std::all_of(std::begin(commands),
-                     std::end(commands),
-                     [&](auto cmd) { return check_docopt_flag(opt, cmd); });
-}
-
-
-#include "classifier/classifier.h"
-#include "parser/parser.h"
-
 int main(int argc, const char** argv) {
+  using namespace foo;
+
   auto args = docopt::docopt(USAGE,
                              { argv + 1, argv + argc },
                              true,
