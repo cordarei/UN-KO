@@ -31,6 +31,7 @@ namespace foo {
     offset_t end() const { return end_; }
   };
 
+  bool operator==(span_t const &l, span_t const &r);
   std::ostream & operator<<(std::ostream &out, span_t const &span);
 }
 
