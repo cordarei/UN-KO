@@ -3,21 +3,6 @@
 #include <iostream>
 #include <algorithm>
 
-#include <range/v3/numeric.hpp>
-#include <range/v3/lines_range.hpp>
-#include <json11/json11.hpp>
-
-namespace {
-  std::string read_all(std::istream &is) {
-    return ranges::accumulate(ranges::lines(is), std::string{});
-    // return ranges::accumulate(lines(is), std::string{}, [](std::string a, std::string& b) { return a + b; });
-  }
-
-  json11::Json read_json(std::istream& is) {
-    std::string err;
-    return json11::Json::parse(read_all(is), err);
-  }
-}
 
 namespace foo {
 namespace classifier {

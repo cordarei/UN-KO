@@ -20,7 +20,7 @@ template<typename Rng, typename P = ranges::ident,
            >,
          CONCEPT_REQUIRES_(ranges::InputIterable<Rng>() &&
                            ranges::Invokable<P, V1>())>
-std::vector<V2> make_vector(Rng &r, P proj = P{}) {
+std::vector<V2> make_vector(Rng &&r, P proj = P{}) {
   return r | ranges::view::transform(proj);
 }
 

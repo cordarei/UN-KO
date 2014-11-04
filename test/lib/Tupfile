@@ -1,4 +1,6 @@
 include_rules
 
-: foreach *.cc |> !cxx |>
-: *.o ../../json11.o |> $(CXX) $(CXXFLAGS) %f -o %o |> test_lib
+: foreach *.cc |> !cxx |> {OBJ}
+: utility/*.o |> |> {OBJ}
+: ../../json11.o |> |> {OBJ}
+: {OBJ} |> $(CXX) $(CXXFLAGS) %f -o %o |> test_lib
