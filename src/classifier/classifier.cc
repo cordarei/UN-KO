@@ -7,9 +7,6 @@
 #include <range/v3/lines_range.hpp>
 #include <json11/json11.hpp>
 
-#include <foo/foo.h>
-#include "../common.h"
-
 namespace {
   std::string read_all(std::istream &is) {
     return ranges::accumulate(ranges::lines(is), std::string{});
@@ -24,12 +21,6 @@ namespace {
 
 namespace foo {
 namespace classifier {
-
-  struct instance {
-    std::vector<word_t> words;
-    std::vector<pos_t> tags;
-    std::vector<span_t> top_spans;
-  };
 
   //↓temporary code
   void create_instances() {
