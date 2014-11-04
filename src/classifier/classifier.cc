@@ -3,7 +3,7 @@
 #include <iostream>
 #include <algorithm>
 
-#include <foo/container.h>
+#include <foo/utility/container.h>
 
 #include "instance.h"
 

@@ -4,7 +4,7 @@
 #include <string>
 #include <type_traits>
 
-#include <foo/container.h>
+#include <foo/utility/container.h>
 
 TEST_CASE("we can make a vector from anything") {
   using namespace std::literals::string_literals;
