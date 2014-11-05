@@ -4,16 +4,7 @@
 #include <vector>
 
 
-template<typename T>
-using unigram_t = T;
-template<typename T>
-using bigram_t = std::pair<T, T>;
-template<typename T>
-using trigram_t = std::tuple<T, T, T>;
-
-struct pos_bigram_feature_tag;
-
-TEST_CASE("we can define a feature generator") {
+SCENARIO("a feature registry can be created and used" "[features]") {
   using bigram_t = std::pair<std::string, std::string>;
   auto tags = std::vector<std::string>{"A", "B", "C"};
   auto bigrams = [](auto &&ts) {
@@ -27,7 +18,14 @@ TEST_CASE("we can define a feature generator") {
     bs.emplace_back(*last, "$");
     return bs;
   };
+  auto feature_reg = feature_registry_t<std::vector<std::string>>{};
+  feature_reg.add_feature(bigrams);
 
-  REQUIRE(bigrams(tags) == (std::vector<bigram_t>{{"^","A"}, {"A", "B"}, {"B", "C"}, {"C", "$"}}));
+  WHEN("the example function is used") {
+    auto bs = bigrams(tags);
+    THEN("it returns all the bigrams") {
+      REQUIRE(bigrams(tags) == (std::vector<bigram_t>{{"^","A"}, {"A", "B"}, {"B", "C"}, {"C", "$"}}));
+    }
+  }
 
 }
