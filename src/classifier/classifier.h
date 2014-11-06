@@ -6,9 +6,9 @@
 namespace foo {
 namespace classifier {
 
-  int train();
-  int test();
-  int run();
+  int train(docopt_t const &args);
+  int test(docopt_t const &args);
+  int run(docopt_t const &args);
 
 }
 }

@@ -8,6 +8,8 @@
 
 
 SCENARIO("a feature registry can be created and used" "[features]") {
+  using foo::feature_registry_t;
+  using foo::feature_id_t;
   using bigram_t = std::string;
   auto tags = std::vector<std::string>{"A", "B", "C"};
   auto bigrams = [](auto && ts) {

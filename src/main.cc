@@ -28,15 +28,15 @@ int main(int argc, const char** argv) {
 
   if (check_docopt_command(args, {"classifier", "train"})) {
     std::cout << "training classifier" << std::endl;
-    return classifier::train();
+    return classifier::train(args);
   }
   if (check_docopt_command(args, {"classifier", "test"})) {
     std::cout << "testing classifier" << std::endl;
-    return classifier::test();
+    return classifier::test(args);
   }
   if (check_docopt_command(args, {"classifier", "run"})) {
     std::cout << "running classifier" << std::endl;
-    return classifier::run();
+    return classifier::run(args);
   }
 
   if (check_docopt_command(args, {"parser", "extract-grammar"})) {
