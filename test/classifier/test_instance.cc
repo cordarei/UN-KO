@@ -4,21 +4,21 @@
 #include "../../src/classifier/instance.h"
 
 
-TEST_CASE("instance can be default and copy constructed") {
-  using foo::classifier::instance;
-  instance i{};
-  auto i2 = instance{};
+TEST_CASE("sentence_t can be default and copy constructed") {
+  using foo::classifier::sentence_t;
+  sentence_t i{};
+  auto i2 = sentence_t{};
   auto i3{i2};
   auto i4 = i3;
 }
 
-TEST_CASE("instance can be created from a JSON object") {
+TEST_CASE("sentence_t can be created from a JSON object") {
   auto j = get_json();
   auto &&k = j["sentences"][0];
-  auto i = foo::classifier::make_instance(k);
+  auto i = foo::classifier::make_sentence(k);
 
   REQUIRE(i.words == (std::vector<std::string>{"This", "is", "sentence", "one", "."}));
-  REQUIRE(i.top_spans == (std::vector<foo::span_t>{
+  REQUIRE((*i.answer).top_spans == (std::vector<foo::span_t>{
         {"NP", 0u, 1u}, {"VP", 1u, 4u}, {".", 4u, 5u}
       }));
 }

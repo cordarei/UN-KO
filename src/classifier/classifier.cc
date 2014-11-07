@@ -9,42 +9,19 @@
 #include <range/v3/algorithm/sort.hpp>
 
 #include "instance.h"
+#include "config.h"
 
 
 namespace foo {
   namespace classifier {
 
     /*
-     * Config
-     */
-
-    using feature_register_t = foo::feature_registry_t<foo::classifier::instance, std::string>;
-
-    struct feature_config_t {
-      bool pos = false;
-      bool word = false;
-      bool global = false;
-      bool local = false;
-    };
-
-    struct config_t {
-      feature_config_t features;
-      std::string input_file;
-      std::string output_file; //optional
-      std::string model_file;
-      std::string feature_file;
-    };
-
-    config_t make_config(docopt_t const &args) {
-      return {};
-    }
-
-
-    /*
      * Features
      */
 
-    void register_features(feature_register_t &reg, feature_config_t const &conf) {
+    using feature_registry_t = foo::feature_registry_t<foo::classifier::instance_t, std::string>;
+
+    void register_features(feature_registry_t &reg, feature_config_t const &conf) {
     }
 
 
@@ -52,9 +29,9 @@ namespace foo {
      * Commands
      */
 
-    std::vector<instance> create_instances(std::istream &sin) {
+    std::vector<sentence_t> read_sentences(std::istream &sin) {
       auto v = read_json(sin);
-      return make_vector(v["sentences"].array_items(), make_instance);
+      return make_vector(v["sentences"].array_items(), make_sentence);
     }
 
 
@@ -63,7 +40,7 @@ namespace foo {
       auto conf = make_config(args);
 
       //set up features
-      auto reg = feature_register_t{};
+      auto reg = feature_registry_t{};
       register_features(reg, conf.features);
 
       //read in training file (JSON) and create instances
@@ -71,14 +48,21 @@ namespace foo {
       std::ifstream fin{};
       if (conf.input_file != "-") fin.open(conf.input_file);
 
-      auto instances = create_instances(*sin);
+      // auto sentences = read_sentences(*sin);
+      // auto caches = std::vector<structure_cache_t>{sentences.size()};
+      auto sentences = make_vector(read_sentences(*sin), [](auto &&s) {
+          return std::make_tuple(std::move(s), structure_cache_t{});
+        });
 
       //generate features for each instance
-      auto features = make_vector(instances, [&](auto const &i) {
-          auto fs = reg(i);
-          ranges::sort(fs);
-          return fs;
-        });
+
+      // auto instances = make_vector(sentences, [&](auto const &swc) {
+      //   });
+      // auto features = make_vector(sentences, [&](auto const &i) {
+      //     auto fs = reg(i);
+      //     ranges::sort(fs);
+      //     return fs;
+      //   });
 
       //train weights using averaged perceptron
 
