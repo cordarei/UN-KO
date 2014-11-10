@@ -25,7 +25,7 @@ namespace foo {
     };
 
     inline
-    config_t make_config(docopt_t const &args) {
+    config_t make_config(docopt_t const &/*args*/) {
       return {};
     }
 

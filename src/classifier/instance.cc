@@ -33,7 +33,10 @@ namespace foo {
         auto split_points = make_vector(top_spans, &span_t::end);
         split_points.erase(--split_points.end());
 
-        ans = std::experimental::optional<answer_t>{{std::move(top_spans)}};
+        ans = std::experimental::optional<answer_t>{{
+            std::move(top_spans),
+            std::move(split_points)
+          }};
       }
       return { std::move(words), std::move(tags), std::move(ans) };
     }

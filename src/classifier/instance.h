@@ -72,7 +72,7 @@ namespace classifier {
       : sentence_{&sentence}, cache_{&cache}, sp_{sp}
     {}
 
-    instance_t() = delete;
+    instance_t() : sentence_{nullptr}, cache_{nullptr}, sp_{static_cast<offset_t>(-1)} {}
     ~instance_t() {};
     instance_t(instance_t const &) = default;
     instance_t(instance_t &&) = default;

@@ -7,6 +7,7 @@
 #include <foo/utility/container.h>
 #include <foo/features.h>
 #include <range/v3/algorithm/sort.hpp>
+#include <range/v3/view/iota.hpp>
 
 #include "instance.h"
 #include "config.h"
@@ -21,7 +22,7 @@ namespace foo {
 
     using feature_registry_t = foo::feature_registry_t<foo::classifier::instance_t, std::string>;
 
-    void register_features(feature_registry_t &reg, feature_config_t const &conf) {
+    void register_features(feature_registry_t &/*reg*/, feature_config_t const &/*conf*/) {
     }
 
 
@@ -56,12 +57,29 @@ namespace foo {
 
       //generate features for each instance
 
-      // auto instances = make_vector(sentences, [&](auto const &swc) {
-      //   });
-      // auto features = make_vector(sentences, [&](auto const &i) {
-      //     auto fs = reg(i);
-      //     ranges::sort(fs);
-      //     return fs;
+      auto instances = make_vector(sentences, [&](auto const &swc) {
+          auto & sent = std::get<0>(swc);
+          auto & cache = std::get<1>(swc);
+          auto len = sent.words.size();
+
+          auto is = ranges::view::iota(offset_t{0})
+            | ranges::view::take(len)
+            | ranges::view::transform([&](auto &&sp) {
+                auto i = instance_t{sent, cache, sp};
+                auto fs = reg(i);
+                ranges::sort(fs);
+                return std::make_tuple(std::move(i), std::move(fs));
+              });
+
+          return make_vector(is);
+        });
+
+      // auto features = make_vector(instances, [&](auto const &is) {
+      //     return make_vector(is, [](auto const &i) {
+      //         auto fs = reg(i);
+      //         ranges::sort(fs);
+      //         return fs;
+      //       });
       //   });
 
       //train weights using averaged perceptron

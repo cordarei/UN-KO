@@ -21,4 +21,7 @@ TEST_CASE("sentence_t can be created from a JSON object") {
   REQUIRE((*i.answer).top_spans == (std::vector<foo::span_t>{
         {"NP", 0u, 1u}, {"VP", 1u, 4u}, {".", 4u, 5u}
       }));
+  REQUIRE((*i.answer).legal_split_points == (std::vector<foo::offset_t>{
+        1u, 4u
+      }));
 }
