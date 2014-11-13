@@ -20,26 +20,12 @@ namespace classifier {
   struct answer_t {
     std::vector<span_t> top_spans;
     std::vector<offset_t> legal_split_points;
-
-    answer_t() = default;
-    ~answer_t() = default;
-    answer_t(answer_t const &) = default;
-    answer_t(answer_t &&) = default;
-    answer_t & operator=(answer_t const &) = default;
-    answer_t & operator=(answer_t &&) = default;
   };
 
   struct sentence_t {
     std::vector<word_t> words;
     std::vector<pos_t> tags;
     std::experimental::optional<answer_t> answer;
-
-    sentence_t() = default;
-    ~sentence_t() = default;
-    sentence_t(sentence_t const &) = default;
-    sentence_t(sentence_t &&) = default;
-    sentence_t & operator=(sentence_t const &) = default;
-    sentence_t & operator=(sentence_t &&) = default;
   };
 
   sentence_t make_sentence(json const &j);
@@ -73,11 +59,6 @@ namespace classifier {
     {}
 
     instance_t() : sentence_{nullptr}, cache_{nullptr}, sp_{static_cast<offset_t>(-1)} {}
-    ~instance_t() {};
-    instance_t(instance_t const &) = default;
-    instance_t(instance_t &&) = default;
-    instance_t & operator=(instance_t const &) = default;
-    instance_t & operator=(instance_t &&) = default;
 
     sentence_t const & sentence() const { return *sentence_; }
     structure_cache_t const & cache() const { return *cache_; }
