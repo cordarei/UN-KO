@@ -16,8 +16,17 @@ namespace foo {
       bool local = false;
     };
 
+    enum class update_t {
+      binary,
+      default_multiclass,
+      balance,
+      random,
+      edges
+    };
+
     struct config_t {
       feature_config_t features;
+      update_t update;
       std::string input_file;
       std::string output_file; //optional
       std::string model_file;

@@ -22,7 +22,8 @@ namespace foo {
 
     using feature_registry_t = foo::feature_registry_t<foo::classifier::instance_t, std::string>;
 
-    void register_features(feature_registry_t &/*reg*/, feature_config_t const &/*conf*/) {
+    feature_registry_t make_feature_registry(feature_config_t const &/*conf*/) {
+      return {};
     }
 
 
@@ -35,38 +36,58 @@ namespace foo {
       return make_vector(v["sentences"].array_items(), make_sentence);
     }
 
+    std::vector<sentence_t> read_sentences(std::string const &filename) {
+      std::istream * sin = &std::cin;
+      std::ifstream fin{};
+      if (filename != "-") {
+        fin.open(filename);
+        sin = &fin;
+      }
+
+      return read_sentences(*sin);
+    }
+
+
+    template <typename Rng>
+    void train_binary(T w, Rng & instances) {
+      auto u = 0;//?
+      auto c = 0;//?
+      for (auto && tpl : instances) {
+        auto & in = std::get<0>(tpl);
+        auto & fs = std::get<1>(tpl);
+      }
+    }
+
+    template <typename Rng>
+    void train_multiclass(T w, Rng & instances) {
+      auto u = 0;//?
+      auto c = 0;//?
+      for (auto && is : instances) {
+      }
+    }
+
 
     int train(docopt_t const &args) {
       //set up configuration from command-line arguments
       auto conf = make_config(args);
 
       //set up features
-      auto reg = feature_registry_t{};
-      register_features(reg, conf.features);
+      auto features = make_feature_registry(conf.features);
 
-      //read in training file (JSON) and create instances
-      std::istream * sin = &std::cin;
-      std::ifstream fin{};
-      if (conf.input_file != "-") fin.open(conf.input_file);
-
-      // auto sentences = read_sentences(*sin);
-      // auto caches = std::vector<structure_cache_t>{sentences.size()};
-      auto sentences = make_vector(read_sentences(*sin), [](auto &&s) {
+      auto sentences = make_vector(read_sentences(conf.input_file), [](auto &s) {
           return std::make_tuple(std::move(s), structure_cache_t{});
         });
 
-      //generate features for each instance
-
-      auto instances = make_vector(sentences, [&](auto const &swc) {
+      auto instances = make_vector(sentences, [&features](auto const &swc) mutable {
           auto & sent = std::get<0>(swc);
           auto & cache = std::get<1>(swc);
           auto len = sent.words.size();
 
           auto is = ranges::view::iota(offset_t{0})
             | ranges::view::take(len)
-            | ranges::view::transform([&](auto &&sp) {
+            | ranges::view::transform([&features](auto &&sp) mutable {
                 auto i = instance_t{sent, cache, sp};
-                auto fs = reg(i);
+                auto fs = features(i);
                 ranges::sort(fs);
                 return std::make_tuple(std::move(i), std::move(fs));
               });
@@ -74,15 +95,14 @@ namespace foo {
           return make_vector(is);
         });
 
-      // auto features = make_vector(instances, [&](auto const &is) {
-      //     return make_vector(is, [](auto const &i) {
-      //         auto fs = reg(i);
-      //         ranges::sort(fs);
-      //         return fs;
-      //       });
-      //   });
-
       //train weights using averaged perceptron
+      auto w = 0;//?
+      if (conf.update == update_t::binary) {
+        auto is = ranges::view::flatten(instances);
+        train_binary(w, is);
+      } else {
+        //?
+      }
 
       //save weights and features
 
