@@ -40,6 +40,8 @@ namespace foo {
     feature_registry_t & operator=(feature_registry_t const &) = delete;
     feature_registry_t & operator=(feature_registry_t &&) = default;
 
+    feature_id_t max_id() const { return next_id_ - 1; }
+
     void add_feature(feature_function_type ff) { ffs_.push_back(std::move(ff)); }
 
     return_type operator()(instance_type const &instance) {

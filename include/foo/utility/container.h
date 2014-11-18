@@ -9,19 +9,16 @@
 
 namespace foo {
 
-template<typename Rng, typename P = ranges::ident,
-         typename V1 = ranges::range_value_t<Rng>,
-         typename V2 = std::decay_t<
-           decltype(
-                    ranges::invokable(std::declval<P>())(
-                                                         std::declval<V1>()
-                                                         )
-                    )
+template<typename Rng,
+         typename P = ranges::ident,
+         typename V = std::decay_t<
+           ranges::concepts::Invokable::result_t<P, ranges::range_value_t<Rng>>
            >,
          CONCEPT_REQUIRES_(ranges::InputIterable<Rng>() &&
-                           ranges::Invokable<P, V1>())>
-std::vector<V2> make_vector(Rng &&r, P proj = P{}) {
-  return r | ranges::view::transform(proj);
+                           ranges::Invokable<P, ranges::range_value_t<Rng>>())>
+std::vector<V> make_vector(Rng && rng, P proj = P{}) {
+  auto transformed = ranges::view::transform(rng, std::move(proj));
+  return transformed;
 }
 
 }

@@ -25,3 +25,27 @@ TEST_CASE("sentence_t can be created from a JSON object") {
         1u, 4u
       }));
 }
+
+TEST_CASE("is_legal returns true for legal instances") {
+  auto j = get_json();
+  auto &&k = j["sentences"][0];
+  auto sent = foo::classifier::make_sentence(k);
+  auto c = foo::classifier::structure_cache_t{};
+
+  auto i1 = foo::classifier::instance_t{sent, c, 1};
+  REQUIRE(foo::classifier::is_legal(i1) == true);
+  auto i2 = foo::classifier::instance_t{sent, c, 4};
+  REQUIRE(foo::classifier::is_legal(i2) == true);
+}
+
+TEST_CASE("is_legal returns false for illegal instances") {
+  auto j = get_json();
+  auto &&k = j["sentences"][0];
+  auto sent = foo::classifier::make_sentence(k);
+  auto c = foo::classifier::structure_cache_t{};
+
+  auto i1 = foo::classifier::instance_t{sent, c, 2};
+  REQUIRE(foo::classifier::is_legal(i1) == false);
+  auto i2 = foo::classifier::instance_t{sent, c, 3};
+  REQUIRE(foo::classifier::is_legal(i2) == false);
+}

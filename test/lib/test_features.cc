@@ -7,7 +7,7 @@
 #include <sstream>
 
 
-SCENARIO("a feature registry can be created and used" "[features]") {
+SCENARIO("a feature registry can be created and used") {
   using foo::feature_registry_t;
   using foo::feature_id_t;
   using bigram_t = std::string;

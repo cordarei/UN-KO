@@ -65,6 +65,8 @@ namespace classifier {
     offset_t sp() const { return sp_; }
   };
 
+  bool is_legal(instance_t const &);
+
 }
 }
 

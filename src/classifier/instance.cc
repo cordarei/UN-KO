@@ -6,6 +6,7 @@
 #include <foo/span.h>
 #include <foo/utility/container.h>
 #include <json11/json11.hpp>
+#include <range/v3/algorithm/any_of.hpp>
 
 
 namespace foo {
@@ -39,6 +40,14 @@ namespace foo {
           }};
       }
       return { std::move(words), std::move(tags), std::move(ans) };
+    }
+
+    bool is_legal(instance_t const &i) {
+      auto & ans = i.sentence().answer;
+      auto sp = i.sp();
+      if (!ans) return false;
+      auto & legal = (*ans).legal_split_points;
+      return ranges::any_of(legal, [&sp](auto j) { return j == sp; });
     }
 
   }
