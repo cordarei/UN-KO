@@ -53,6 +53,33 @@ namespace foo {
     }
 
 
+    using sent_cache_pair_t = std::tuple<sentence_t, structure_cache_t>;
+    using sent_cache_vec_t = std::vector<sent_cache_pair_t>;
+
+    sent_cache_vec_t make_sentences(std::string const & filename) {
+      return make_vector(read_sentences(filename), [](auto &s) {
+          return std::make_tuple(std::move(s), structure_cache_t{});
+        });
+    }
+
+    template <typename FeatureFun>
+    auto make_sentence_instance_range(sent_cache_vec_t const & sentences, FeatureFun && features) {
+      return ranges::view::transform(sentences, [&features](auto const &swc) mutable {
+            auto & sent = std::get<0>(swc);
+            auto & cache = std::get<1>(swc);
+            auto len = sent.words.size();
+            return ranges::view::iota(offset_t{0})
+                 | ranges::view::take(len)
+                 | ranges::view::transform([&](auto &&sp) mutable {
+                     auto i = instance_t{sent, cache, sp};
+                     auto fs = features(i);
+                     ranges::sort(fs);
+                     return std::make_tuple(i, std::move(fs));
+                   });
+          });
+    }
+
+
     template <typename Rng>
     weights_t train_binary(Rng & instances, size_t max_id) {
       auto w = weights_t{max_id};
@@ -92,31 +119,18 @@ namespace foo {
       return w;
     }
 
-
-    int train(docopt_t const &args) {
+    int train(docopt_t const & args) {
       //set up configuration from command-line arguments
       auto conf = make_config(args);
 
       //set up features
       auto features = make_feature_registry(conf.features);
 
-      auto sentences = make_vector(read_sentences(conf.input_file), [](auto &s) {
-          return std::make_tuple(std::move(s), structure_cache_t{});
-        });
+      //read in training data
+      auto sentences = make_sentences(conf.input_file);
 
-      auto sent_inst_rng = ranges::view::transform(sentences, [&features](auto const &swc) {
-            auto & sent = std::get<0>(swc);
-            auto & cache = std::get<1>(swc);
-            auto len = sent.words.size();
-            return ranges::view::iota(offset_t{0})
-                 | ranges::view::take(len)
-                 | ranges::view::transform([&](auto &&sp) {
-                     auto i = instance_t{sent, cache, sp};
-                     auto fs = const_cast<feature_registry_t &>(features)(i);
-                     ranges::sort(fs);
-                     return std::make_tuple(i, std::move(fs));
-                   });
-          });
+      //create range over instances and features
+      auto sent_inst_rng = make_sentence_instance_range(sentences, features);
 
       //train weights using averaged perceptron
       auto w = weights_t{};
@@ -133,7 +147,36 @@ namespace foo {
       return 0;
     }
 
-    int test(docopt_t const &/*args*/) { return 0; }
+
+    int test(docopt_t const & args) {
+      //set up configuration from command-line arguments
+      auto conf = make_config(args);
+
+      //set up features
+      auto features = make_feature_registry(conf.features);
+      {
+        std::fstream sin{conf.feature_file};
+        features.load(sin);
+      }
+
+      //read in training data
+      auto sentences = make_sentences(conf.input_file);
+
+      //create range over instances and features
+      auto sent_inst_rng = make_sentence_instance_range(sentences, static_cast<feature_registry_t const&>(features));
+
+      //read in weights
+      auto w = weights_t{};//TODO
+
+      if (conf.update == update_t::binary) {
+        auto instances = make_vector(sent_inst_rng | ranges::view::flatten);
+      } else {
+        auto instances = make_vector(sent_inst_rng, [](auto &&rng) { return make_vector(rng); });
+      }
+
+      return 0;
+    }
+
     int run(docopt_t const &/*args*/) { return 0; }
 
   } //namespace classifier
