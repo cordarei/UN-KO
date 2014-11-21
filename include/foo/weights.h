@@ -2,6 +2,7 @@
 #define FOO_INCLUDE_FOO_WEIGHTS_H
 
 
+#include <iosfwd>
 #include <vector>
 
 #include <range/v3/numeric/accumulate.hpp>
@@ -46,6 +47,24 @@ namespace foo {
       auto & uw = u.w_;
       for (auto i : ranges::view::iota(0u) | ranges::view::take(uw.size())) {
         w[i] += uw[i] * val;
+      }
+    }
+
+    void save(std::ostream & sout) {
+      auto & w = this->w_;
+      sout << w.size() << std::endl;
+      for (auto && v : w) {
+        sout << v << std::endl;
+      }
+    }
+
+    void load(std::istream & sin) {
+      auto & w = this->w_;
+      size_t s;
+      sin >> s;
+      w.resize(s);
+      for (auto i : ranges::view::iota(0u) | ranges::view::take(w.size())) {
+        sin >> w[i];
       }
     }
   };

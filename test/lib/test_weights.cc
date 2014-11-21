@@ -20,3 +20,18 @@ TEST_CASE("default constructed weights can be assigned to but not used") {
   w = foo::weights_t{1};
   REQUIRE(0 == w.score({1}));
 }
+
+TEST_CASE("weights can be saved and loaded") {
+  auto w = foo::weights_t{5};
+  w.update({1,2,3}, 1);
+  w.update({4,5}, -1);
+  CHECK(w.score({2,3,4}) > 0);
+  CHECK(w.score({3,4,5}) < 0);
+
+  std::stringstream ss;
+  w.save(ss);
+  auto u = foo::weights_t{};
+  u.load(ss);
+  CHECK(u.score({2,3,4}) > 0);
+  CHECK(u.score({3,4,5}) < 0);
+}

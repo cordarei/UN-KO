@@ -29,7 +29,7 @@ namespace foo {
       update_t update;
       std::string input_file;
       std::string output_file; //optional
-      std::string model_file;
+      std::string weights_file;
       std::string feature_file;
     };
 

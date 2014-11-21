@@ -143,6 +143,14 @@ namespace foo {
       }
 
       //save weights and features
+      {
+        std::fstream fout{conf.feature_file};
+        features.save(fout);
+      }
+      {
+        std::fstream fout{conf.weights_file};
+        w.save(fout);
+      }
 
       return 0;
     }
@@ -166,7 +174,11 @@ namespace foo {
       auto sent_inst_rng = make_sentence_instance_range(sentences, static_cast<feature_registry_t const&>(features));
 
       //read in weights
-      auto w = weights_t{};//TODO
+      auto w = weights_t{features.max_id()};
+      {
+        std::fstream fin{conf.weights_file};
+        w.load(fin);
+      }
 
       if (conf.update == update_t::binary) {
         auto instances = make_vector(sent_inst_rng | ranges::view::flatten);
