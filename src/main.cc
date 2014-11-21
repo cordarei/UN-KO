@@ -34,10 +34,6 @@ int main(int argc, const char** argv) {
     std::cout << "testing classifier" << std::endl;
     return classifier::test(args);
   }
-  if (check_docopt_command(args, {"classifier", "run"})) {
-    std::cout << "running classifier" << std::endl;
-    return classifier::run(args);
-  }
 
   if (check_docopt_command(args, {"parser", "extract-grammar"})) {
     std::cout << "extracting grammar with parser" << std::endl;

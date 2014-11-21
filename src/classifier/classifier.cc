@@ -11,6 +11,7 @@
 #include <range/v3/algorithm/sort.hpp>
 #include <range/v3/algorithm/transform.hpp>
 #include <range/v3/algorithm/max_element.hpp>
+#include <range/v3/algorithm/for_each.hpp>
 #include <range/v3/view/iota.hpp>
 #include <range/v3/view/flatten.hpp>
 
@@ -183,14 +184,34 @@ namespace foo {
 
       if (conf.update == update_t::binary) {
         auto instances = make_vector(sent_inst_rng | ranges::view::flatten);
+        auto results = classification_results{};
+        ranges::for_each(instances, [&results,&w](auto && tpl) {
+            using result_t = classification_results::result_t;
+            auto & in = std::get<0>(tpl);
+            auto & fs = std::get<1>(tpl);
+            auto y_ = w.score(fs) > 0.;
+            auto y = is_legal(in);
+            auto res = (y ? (y_ ? result_t::tp : result_t::fn) : (y_ ? result_t::fp : result_t::tn));
+            results.add(res);
+          });
+
+        std::cout << "Binary Classifier Results:" << std::endl;
+        std::cout << "TP\tFP\tTN\tFN" << std::endl;
+        std::cout << results.tp() << "\t"
+                  << results.fp() << "\t"
+                  << results.tn() << "\t"
+                  << results.fn() << "\t" << std::endl;;
+        std::cout << "Accuracy: \t" << results.accuracy() << std::endl;
+        std::cout << "Recall: \t" << results.recall() << std::endl;
+        std::cout << "Precision: \t" << results.precision() << std::endl;
+        std::cout << "F1: \t" << results.f1() << std::endl;
+
       } else {
         auto instances = make_vector(sent_inst_rng, [](auto &&rng) { return make_vector(rng); });
       }
 
       return 0;
     }
-
-    int run(docopt_t const &/*args*/) { return 0; }
 
   } //namespace classifier
 } //namespace foo
