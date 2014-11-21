@@ -16,6 +16,7 @@
 
 #include "instance.h"
 #include "config.h"
+#include "results.h"
 
 
 namespace foo {
