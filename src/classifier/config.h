@@ -34,8 +34,35 @@ namespace foo {
     };
 
     inline
-    config_t make_config(docopt_t const &/*args*/) {
-      return {};
+    config_t make_config(docopt_t const &args) {
+      auto conf = config_t{};
+      conf.update = update_t::binary;
+
+      auto upd = check_docopt_arg<std::string>(args, "--update");
+      if (upd) {
+        auto &s = *upd;
+        if (s != "binary") {
+          throw std::runtime_error("multiclass not implemented");
+        }
+      }
+
+      conf.input_file = *check_docopt_arg<std::string>(args, "--input");
+
+      auto model = *check_docopt_arg<std::string>(args, "--model");
+      conf.weights_file = model + ".weights";
+      conf.feature_file = model + ".features";
+
+      auto out = check_docopt_arg<std::string>(args, "--output");
+      if (out) {
+        conf.output_file = *out;
+      }
+
+      conf.features.pos = check_docopt_flag(args, "--feat-pos");
+      conf.features.word = check_docopt_flag(args, "--feat-word");
+      conf.features.global = check_docopt_flag(args, "--feat-global");
+      conf.features.local = check_docopt_flag(args, "--feat-local");
+
+      return conf;
     }
 
   }

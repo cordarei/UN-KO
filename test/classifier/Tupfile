@@ -2,5 +2,6 @@ include_rules
 
 : foreach *.cc |> !cxx |> {OBJ}
 : ../../json11.o |> |> {OBJ}
+: ../../docopt.o |> |> {OBJ}
 : ../../src/classifier/*.o |> |> {OBJ}
 : {OBJ} ../../libfoo.a |> $(CXX) $(CXXFLAGS) %f -o %o |> test_classifier

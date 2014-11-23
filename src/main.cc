@@ -9,11 +9,20 @@ constexpr auto USAGE =
 u8R"(  foo
 
   Usage:
-    foo classifier train
-    foo classifier run
-    foo classifier test
+    foo classifier train [options]
+    foo classifier test [options]
     foo parser extract-grammar
-    foo parser run
+    foo parser run [options]
+
+  Options:
+    --update=<upd>     Classifier update [default: binary]
+    --input=<in>       Input file
+    --model=<model>    Model name (for feature and weights files) [default: model]
+    --output=<out>     Output file
+    --feat-pos         POS features
+    --feat-word        Word features
+    --feat-global      Global features
+    --feat-local       Local Features
 )";
 constexpr auto VERSION = u8"foo 0.0.0";
 

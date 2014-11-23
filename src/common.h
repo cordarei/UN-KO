@@ -4,6 +4,7 @@
 
 #include <iterator>
 #include <algorithm>
+#include <experimental/optional>
 
 #include <docopt/docopt.h>
 #include <json11/json11.hpp>
@@ -31,6 +32,18 @@ namespace {
     return std::all_of(std::begin(commands),
                        std::end(commands),
                        [&](auto cmd) { return check_docopt_flag(opt, cmd); });
+  }
+
+  template<typename T>
+  std::experimental::optional<T> check_docopt_arg(docopt_t const &opt, std::string const &arg) {
+    auto it = opt.find(arg);
+    if (it != opt.end()) {
+      if (docopt::is<T>(it->second)) {
+        return docopt::get<T>(it->second);
+      }
+    }
+
+    return std::experimental::nullopt;
   }
 
 
