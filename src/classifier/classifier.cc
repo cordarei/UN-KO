@@ -10,10 +10,10 @@
 #include <foo/utility/container.h>
 #include <range/v3/algorithm/sort.hpp>
 #include <range/v3/algorithm/transform.hpp>
-#include <range/v3/algorithm/max_element.hpp>
 #include <range/v3/algorithm/for_each.hpp>
 #include <range/v3/view/iota.hpp>
 #include <range/v3/view/flatten.hpp>
+#include <range/v3/range_for.hpp>
 
 #include "instance.h"
 #include "config.h"
@@ -83,11 +83,12 @@ namespace foo {
 
 
     template <typename Rng>
-    weights_t train_binary(Rng & instances, size_t max_id) {
+    weights_t train_binary(Rng && instances, size_t max_id) {
       auto w = weights_t{max_id};
       auto u = weights_t{max_id};
       auto c = 0;
-      for (auto && tpl : instances) {
+      // for (auto && tpl : instances) {
+      RANGES_FOR(auto && tpl, instances) {
         auto & in = std::get<0>(tpl);
         auto & fs = std::get<1>(tpl);
         auto y_ = w.score(fs) > 0.;
@@ -103,23 +104,23 @@ namespace foo {
       return w;
     }
 
-    template <typename Rng>
-    weights_t train_multiclass(Rng & instances, update_t update, size_t max_id) {
-      auto w = weights_t{max_id};
-      auto u = weights_t{max_id};
-      auto c = 0;
-      for (auto && is : instances) {
-        auto maxit = ranges::max_element(is, std::less<>(), [&w](auto && tpl) {
-            auto & fs = std::get<1>(tpl);
-            return w.score(fs);
-          });
-        auto y = is_legal(std::get<0>(*maxit));
+    // template <typename Rng>
+    // weights_t train_multiclass(Rng & instances, update_t update, size_t max_id) {
+    //   auto w = weights_t{max_id};
+    //   auto u = weights_t{max_id};
+    //   auto c = 0;
+    //   for (auto && is : instances) {
+    //     auto maxit = ranges::max_element(is, std::less<>(), [&w](auto && tpl) {
+    //         auto & fs = std::get<1>(tpl);
+    //         return w.score(fs);
+    //       });
+    //     auto y = is_legal(std::get<0>(*maxit));
 
-        ++c;
-      }
-      w.update(u, 1.0/c);
-      return w;
-    }
+    //     ++c;
+    //   }
+    //   w.update(u, 1.0/c);
+    //   return w;
+    // }
 
     int train(docopt_t const & args) {
       //set up configuration from command-line arguments
@@ -137,11 +138,10 @@ namespace foo {
       //train weights using averaged perceptron
       auto w = weights_t{};
       if (conf.classifier == classifier_type_t::binary) {
-        auto instances = make_vector(sent_inst_rng | ranges::view::flatten);
-        w = train_binary(instances, features.max_id());
+        w = train_binary(sent_inst_rng | ranges::view::flatten, features.max_id());
       } else {
-        auto instances = make_vector(sent_inst_rng, [](auto &&rng) { return make_vector(rng); });
-        w = train_multiclass(instances, conf.update, features.max_id());
+        // auto instances = make_vector(sent_inst_rng, [](auto &&rng) { return make_vector(rng); });
+        // w = train_multiclass(instances, conf.update, features.max_id());
       }
 
       //save weights and features
@@ -183,7 +183,7 @@ namespace foo {
       }
 
       if (conf.classifier == classifier_type_t::binary) {
-        auto instances = make_vector(sent_inst_rng | ranges::view::flatten);
+        auto instances = sent_inst_rng | ranges::view::flatten;
         auto results = classification_results{};
         ranges::for_each(instances, [&results,&w](auto && tpl) {
             using result_t = classification_results::result_t;
@@ -207,7 +207,7 @@ namespace foo {
         std::cout << "F1: \t" << results.f1() << std::endl;
 
       } else {
-        auto instances = make_vector(sent_inst_rng, [](auto &&rng) { return make_vector(rng); });
+        // auto instances = make_vector(sent_inst_rng, [](auto &&rng) { return make_vector(rng); });
       }
 
       return 0;
