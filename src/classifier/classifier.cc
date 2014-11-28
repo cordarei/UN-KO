@@ -146,11 +146,11 @@ namespace foo {
 
       //save weights and features
       {
-        std::fstream fout{conf.feature_file};
+        std::ofstream fout{conf.feature_file};
         features.save(fout);
       }
       {
-        std::fstream fout{conf.weights_file};
+        std::ofstream fout{conf.weights_file};
         w.save(fout);
       }
 
@@ -165,7 +165,7 @@ namespace foo {
       //set up features
       auto features = make_feature_registry(conf.features);
       {
-        std::fstream sin{conf.feature_file};
+        std::ifstream sin{conf.feature_file};
         features.load(sin);
       }
 
@@ -178,7 +178,7 @@ namespace foo {
       //read in weights
       auto w = weights_t{features.max_id()};
       {
-        std::fstream fin{conf.weights_file};
+        std::ifstream fin{conf.weights_file};
         w.load(fin);
       }
 
