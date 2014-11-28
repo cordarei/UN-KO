@@ -136,7 +136,7 @@ namespace foo {
 
       //train weights using averaged perceptron
       auto w = weights_t{};
-      if (conf.update == update_t::binary) {
+      if (conf.classifier == classifier_type_t::binary) {
         auto instances = make_vector(sent_inst_rng | ranges::view::flatten);
         w = train_binary(instances, features.max_id());
       } else {
@@ -182,7 +182,7 @@ namespace foo {
         w.load(fin);
       }
 
-      if (conf.update == update_t::binary) {
+      if (conf.classifier == classifier_type_t::binary) {
         auto instances = make_vector(sent_inst_rng | ranges::view::flatten);
         auto results = classification_results{};
         ranges::for_each(instances, [&results,&w](auto && tpl) {

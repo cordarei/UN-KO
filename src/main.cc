@@ -15,7 +15,6 @@ u8R"(  foo
     foo parser run [options]
 
   Options:
-    --update=<upd>     Classifier update [default: binary]
     --input=<in>       Input file
     --model=<model>    Model name (for feature and weights files) [default: model]
     --output=<out>     Output file

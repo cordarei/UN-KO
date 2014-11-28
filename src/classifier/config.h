@@ -16,9 +16,13 @@ namespace foo {
       bool local = false;
     };
 
-    enum class update_t {
+    enum class classifier_type_t {
       binary,
-      default_multiclass,
+      multiclass
+    };
+
+    enum class update_t {
+      default_update,
       balance,
       random,
       edges
@@ -26,6 +30,7 @@ namespace foo {
 
     struct config_t {
       feature_config_t features;
+      classifier_type_t classifier;
       update_t update;
       std::string input_file;
       std::string output_file; //optional
@@ -36,15 +41,16 @@ namespace foo {
     inline
     config_t make_config(docopt_t const &args) {
       auto conf = config_t{};
-      conf.update = update_t::binary;
+      conf.classifier = classifier_type_t::binary;
+      conf.update = update_t::default_update;
 
-      auto upd = check_docopt_arg<std::string>(args, "--update");
-      if (upd) {
-        auto &s = *upd;
-        if (s != "binary") {
-          throw std::runtime_error("multiclass not implemented");
-        }
-      }
+      // auto upd = check_docopt_arg<std::string>(args, "--update");
+      // if (upd) {
+      //   auto &s = *upd;
+      //   if (s != "binary") {
+      //     throw std::runtime_error("multiclass not implemented");
+      //   }
+      // }
 
       conf.input_file = *check_docopt_arg<std::string>(args, "--input");
 
