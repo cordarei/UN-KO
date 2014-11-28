@@ -13,15 +13,33 @@
 #include <range/v3/algorithm/for_each.hpp>
 #include <range/v3/view/iota.hpp>
 #include <range/v3/view/flatten.hpp>
+#include <range/v3/view/take.hpp>
+#include <range/v3/view/drop.hpp>
+#include <range/v3/view/join.hpp>
 #include <range/v3/range_for.hpp>
+#include <range/v3/action/push_back.hpp>
 
 #include "instance.h"
 #include "config.h"
 #include "results.h"
 
+using namespace std::string_literals;
 
 namespace foo {
   namespace classifier {
+
+    size_t subclamp(size_t left, size_t right) {
+      if (left < right) {
+        return 0;
+      } else {
+        return left - right;
+      }
+    }
+
+    template <typename ...String>
+    std::string concat(String &&... strings) {
+      return ranges::view::join(std::forward<String>(strings)...);
+    }
 
     /*
      * Features
@@ -29,8 +47,35 @@ namespace foo {
 
     using feature_registry_t = foo::feature_registry_t<foo::classifier::instance_t, std::string>;
 
-    feature_registry_t make_feature_registry(feature_config_t const &/*conf*/) {
-      return {};
+    std::vector<std::string> global_pos_bigram_features(instance_t const & instance) {
+      if (instance.cache().pos_bigrams.empty()) {
+        instance.cache().pos_bigrams = bigrams(instance.sentence().tags);
+      }
+
+      auto left = instance.cache().pos_bigrams | ranges::view::take(subclamp(instance.sp(), 1u));
+      auto right = instance.cache().pos_bigrams | ranges::view::drop(instance.sp());
+
+      auto fvs = std::vector<std::string>{};
+
+      ranges::push_back(fvs, left | ranges::view::transform([](auto & bg) {
+            return concat("left_bigram:", std::get<0>(bg), "^", std::get<1>(bg));
+          }));
+      ranges::push_back(fvs, right | ranges::view::transform([](auto & bg) {
+            return concat("right_bigram:", std::get<0>(bg), "^", std::get<1>(bg));
+          }));
+
+      std::cerr << "done (fvs size:" << fvs.size() << ")" << std::endl;
+      return fvs;
+    }
+
+    feature_registry_t make_feature_registry(feature_config_t const & conf) {
+      auto features = feature_registry_t{};
+      if (conf.global) {
+        if (conf.pos) {
+          features.add_feature(global_pos_bigram_features);
+        }
+      }
+      return features;
     }
 
 
@@ -65,14 +110,14 @@ namespace foo {
     }
 
     template <typename FeatureFun>
-    auto make_sentence_instance_range(sent_cache_vec_t const & sentences, FeatureFun && features) {
-      return ranges::view::transform(sentences, [&features](auto const &swc) mutable {
+    auto make_sentence_instance_range(sent_cache_vec_t & sentences, FeatureFun && features) {
+      return ranges::view::transform(sentences, [&features](auto & swc) mutable {
             auto & sent = std::get<0>(swc);
             auto & cache = std::get<1>(swc);
             auto len = sent.words.size();
-            return ranges::view::iota(offset_t{0})
-                 | ranges::view::take(len)
-                 | ranges::view::transform([&](auto &&sp) mutable {
+            return ranges::view::iota(offset_t{1})
+                 | ranges::view::take(len - 1)
+                 | ranges::view::transform([&](auto sp) mutable {
                      auto i = instance_t{sent, cache, sp};
                      auto fs = features(i);
                      ranges::sort(fs);
@@ -138,7 +183,9 @@ namespace foo {
       //train weights using averaged perceptron
       auto w = weights_t{};
       if (conf.classifier == classifier_type_t::binary) {
-        w = train_binary(sent_inst_rng | ranges::view::flatten, features.max_id());
+        auto instances = sent_inst_rng | ranges::view::flatten;
+        ranges::for_each(instances, [](auto && x) {});
+        w = train_binary(instances, features.max_id());
       } else {
         // auto instances = make_vector(sent_inst_rng, [](auto &&rng) { return make_vector(rng); });
         // w = train_multiclass(instances, conf.update, features.max_id());

@@ -50,18 +50,18 @@ namespace classifier {
   struct instance_t {
   private:
     sentence_t const * sentence_;
-    structure_cache_t const * cache_;
+    structure_cache_t mutable * cache_;
     offset_t sp_;
 
   public:
-    instance_t(sentence_t const &sentence, structure_cache_t const &cache, offset_t sp)
+    instance_t(sentence_t const &sentence, structure_cache_t &cache, offset_t sp)
       : sentence_{&sentence}, cache_{&cache}, sp_{sp}
     {}
 
     instance_t() : sentence_{nullptr}, cache_{nullptr}, sp_{static_cast<offset_t>(-1)} {}
 
     sentence_t const & sentence() const { return *sentence_; }
-    structure_cache_t const & cache() const { return *cache_; }
+    structure_cache_t & cache() const { return *cache_; }
     offset_t sp() const { return sp_; }
   };
 
