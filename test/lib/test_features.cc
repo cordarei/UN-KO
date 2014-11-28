@@ -6,6 +6,8 @@
 #include <vector>
 #include <sstream>
 
+#include <range/v3/view/take.hpp>
+
 
 SCENARIO("a feature registry can be created and used") {
   using foo::feature_registry_t;
@@ -70,4 +72,33 @@ SCENARIO("a feature registry can be created and used") {
     }
   }
 
+}
+
+
+TEST_CASE("bigrams() returns all bigrams") {
+  using bigram_t = foo::bigram_t<std::string>;
+  auto ws = std::vector<std::string>{"A", "B", "C"};
+  auto bs = foo::bigrams(ws);
+  REQUIRE(bs == (std::vector<bigram_t>{bigram_t{"A", "B"}, bigram_t{"B", "C"}}));
+}
+
+TEST_CASE("bigrams() respects end of range") {
+  using bigram_t = foo::bigram_t<std::string>;
+  auto ws = std::vector<std::string>{"A", "B", "C"};
+  auto bs = foo::bigrams(ws | ranges::view::take(2));
+  REQUIRE(bs == (std::vector<bigram_t>{bigram_t{"A", "B"}}));
+}
+
+TEST_CASE("trigrams() returns all trigrams") {
+  using trigram_t = foo::trigram_t<std::string>;
+  auto ws = std::vector<std::string>{"A", "B", "C", "D"};
+  auto bs = foo::trigrams(ws);
+  REQUIRE(bs == (std::vector<trigram_t>{trigram_t{"A", "B", "C"}, trigram_t{"B", "C", "D"}}));
+}
+
+TEST_CASE("trigrams() respects end of range") {
+  using trigram_t = foo::trigram_t<std::string>;
+  auto ws = std::vector<std::string>{"A", "B", "C", "D"};
+  auto bs = foo::trigrams(ws | ranges::view::take(3));
+  REQUIRE(bs == (std::vector<trigram_t>{trigram_t{"A", "B", "C"}}));
 }

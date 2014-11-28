@@ -13,6 +13,10 @@
 
 #include <range/v3/lines_range.hpp>
 #include <range/v3/range_for.hpp>
+#include <range/v3/view/zip.hpp>
+#include <range/v3/view/drop.hpp>
+
+#include "types.h"
 
 
 namespace foo {
@@ -103,6 +107,16 @@ namespace foo {
       }
     }
   };
+
+  template<typename Rng>
+  std::vector<bigram_t<ranges::range_value_t<Rng>>> bigrams(Rng && rng) {
+    return ranges::view::zip(rng, rng | ranges::view::drop(1));
+  }
+
+  template<typename Rng>
+  std::vector<trigram_t<ranges::range_value_t<Rng>>> trigrams(Rng && rng) {
+    return ranges::view::zip(rng, rng | ranges::view::drop(1), rng | ranges::view::drop(2));
+  }
 }
 
 
