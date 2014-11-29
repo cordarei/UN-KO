@@ -78,11 +78,37 @@ namespace foo {
       return fvs;
     }
 
+    std::vector<std::string> global_pos_trigram_features(instance_t const & instance) {
+      log("enter");
+      if (instance.cache().pos_trigrams.empty()) {
+        instance.cache().pos_trigrams = trigrams(instance.sentence().tags);
+      }
+
+      auto left = instance.cache().pos_trigrams | ranges::view::take(subclamp(instance.sp(), 2u));
+      auto right = instance.cache().pos_trigrams | ranges::view::drop(std::min(instance.cache().pos_trigrams.size(), instance.sp()));
+      log(instance.sentence().tags.size() << " " << instance.cache().pos_trigrams.size() << " " << instance.sp() << " " << ranges::distance(right));
+
+      auto fvs = std::vector<std::string>{};
+
+      log("do left");
+      ranges::push_back(fvs, left | ranges::view::transform([](auto & tg) {
+            return concat("left_trigram:", std::get<0>(tg), "^", std::get<1>(tg), "^", std::get<2>(tg));
+          }));
+      log("do right");
+      ranges::push_back(fvs, right | ranges::view::transform([](auto & tg) {
+            return concat("right_trigram:", std::get<0>(tg), "^", std::get<1>(tg), "^", std::get<2>(tg));
+          }));
+
+      log("leave");
+      return fvs;
+    }
+
     feature_registry_t make_feature_registry(feature_config_t const & conf) {
       auto features = feature_registry_t{};
       if (conf.global) {
         if (conf.pos) {
           features.add_feature(global_pos_bigram_features);
+          features.add_feature(global_pos_trigram_features);
         }
       }
       return features;

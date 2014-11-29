@@ -4,6 +4,7 @@
 
 #include <iterator>
 #include <algorithm>
+#include <iostream>
 #include <experimental/optional>
 
 #include <docopt/docopt.h>
@@ -59,6 +60,13 @@ namespace {
     std::string err;
     return json::parse(read_all(is), err);
   }
+
+
+#if 0
+#define log(x) std::cerr << __FILE__ << "::" << __LINE__ << " " << __FUNCTION__ << " -- " << x << std::endl
+#else
+#define log(x)
+#endif
 }
 
 
