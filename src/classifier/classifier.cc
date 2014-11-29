@@ -137,8 +137,8 @@ namespace foo {
         auto right = tags | ranges::view::slice(sp, i);
         fvs.push_back(concat("local_pos_right:", foo::join(right, "^")));
       }
-      for (auto i : {1, 2, 3}) {
-        if (sp >= i && len > (sp + i)) {
+      for (size_t i : {1, 2, 3}) {
+        if (sp >= i && len >= (sp + i)) {
           auto left = tags | ranges::view::slice(subclamp(sp, i), sp);
           auto right = tags | ranges::view::slice(sp, sp + i);
           fvs.push_back(concat("local_pos_around:", foo::join(left, "^"), "|", foo::join(right, "^")));
