@@ -58,6 +58,24 @@ namespace foo {
 
     using feature_registry_t = foo::feature_registry_t<foo::classifier::instance_t, std::string>;
 
+    std::vector<std::string> global_pos_unigram_features(instance_t const & instance) {
+      log("enter");
+      auto left = instance.sentence().tags | ranges::view::take(instance.sp());
+      auto right = instance.sentence().tags | ranges::view::drop(instance.sp());
+
+      auto fvs = std::vector<std::string>{};
+
+      ranges::push_back(fvs, left | ranges::view::transform([](auto & ug) {
+            return concat("left_unigram:", ug);
+          }));
+      ranges::push_back(fvs, right | ranges::view::transform([](auto & ug) {
+            return concat("right_unigram:", ug);
+          }));
+
+      log("leave");
+      return fvs;
+    }
+
     std::vector<std::string> global_pos_bigram_features(instance_t const & instance) {
       if (instance.cache().pos_bigrams.empty()) {
         instance.cache().pos_bigrams = bigrams(instance.sentence().tags);
@@ -107,6 +125,7 @@ namespace foo {
       auto features = feature_registry_t{};
       if (conf.global) {
         if (conf.pos) {
+          features.add_feature(global_pos_unigram_features);
           features.add_feature(global_pos_bigram_features);
           features.add_feature(global_pos_trigram_features);
         }
