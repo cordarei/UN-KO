@@ -232,7 +232,7 @@ namespace foo {
         }
         ++c;
       }
-      w.update(u, 1.0/c);
+      w.update(u, -1.0/c);
       return w;
     }
 
