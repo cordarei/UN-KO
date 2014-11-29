@@ -122,6 +122,26 @@ namespace foo {
       return fvs;
     }
 
+    std::vector<std::string> global_pos_prefix_features(instance_t const & instance) {
+      auto fvs = std::vector<std::string>{};
+
+      auto & tags = instance.sentence().tags;
+      auto len = tags.size();
+      auto sp = instance.sp();
+
+      for (size_t i : {1, 2, 3, 4}) {
+        if (sp >= i) {
+          fvs.push_back(concat("global_pos_prefix_left:", foo::join(tags | ranges::view::take(i), "^")));
+          fvs.push_back(concat("global_pos_suffix_left:", foo::join(tags | ranges::view::slice(sp - i, sp), "^")));
+        }
+        if (len >= (sp + i)) {
+          fvs.push_back(concat("global_pos_prefix_right:", foo::join(tags | ranges::view::slice(sp, sp + i), "^")));
+          fvs.push_back(concat("global_pos_suffix_right:", foo::join(tags | ranges::view::slice(len - i, len), "^")));
+        }
+      }
+      return fvs;
+    }
+
     std::vector<std::string> local_pos_features(instance_t const & instance) {
       auto fvs = std::vector<std::string>{};
 
