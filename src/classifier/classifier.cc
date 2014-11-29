@@ -16,6 +16,7 @@
 #include <range/v3/view/take.hpp>
 #include <range/v3/view/drop.hpp>
 #include <range/v3/view/join.hpp>
+#include <range/v3/view/slice.hpp>
 #include <range/v3/range_for.hpp>
 #include <range/v3/action/push_back.hpp>
 
@@ -121,6 +122,32 @@ namespace foo {
       return fvs;
     }
 
+    std::vector<std::string> local_pos_features(instance_t const & instance) {
+      auto fvs = std::vector<std::string>{};
+
+      auto & tags = instance.sentence().tags;
+      auto len = tags.size();
+      auto sp = instance.sp();
+
+      for (auto i = subclamp(sp, 3); i < sp; ++i) {
+        auto left = tags | ranges::view::slice(i, sp);
+        fvs.push_back(concat("local_pos_left:", foo::join(left, "^")));
+      }
+      for (auto i = std::min(sp, sp + 3); i > sp; --i) {
+        auto right = tags | ranges::view::slice(sp, i);
+        fvs.push_back(concat("local_pos_right:", foo::join(right, "^")));
+      }
+      for (auto i : {1, 2, 3}) {
+        if (sp >= i && len > (sp + i)) {
+          auto left = tags | ranges::view::slice(subclamp(sp, i), sp);
+          auto right = tags | ranges::view::slice(sp, sp + i);
+          fvs.push_back(concat("local_pos_around:", foo::join(left, "^"), "|", foo::join(right, "^")));
+        }
+      }
+
+      return fvs;
+    }
+
     feature_registry_t make_feature_registry(feature_config_t const & conf) {
       auto features = feature_registry_t{};
       if (conf.global) {
@@ -128,6 +155,11 @@ namespace foo {
           features.add_feature(global_pos_unigram_features);
           features.add_feature(global_pos_bigram_features);
           features.add_feature(global_pos_trigram_features);
+        }
+      }
+      if (conf.local) {
+        if (conf.pos) {
+          features.add_feature(local_pos_features);
         }
       }
       return features;
