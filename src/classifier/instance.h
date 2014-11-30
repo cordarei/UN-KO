@@ -23,6 +23,7 @@ namespace classifier {
   };
 
   struct sentence_t {
+    size_t index;
     std::vector<word_t> words;
     std::vector<pos_t> tags;
     std::experimental::optional<answer_t> answer;

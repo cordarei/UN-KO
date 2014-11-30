@@ -424,6 +424,8 @@ namespace foo {
 
       //read in training data
       auto sentences = make_sentences(conf.input_file);
+      for (size_t i = 0; i < sentences.size(); ++i)
+        std::get<0>(sentences[i]).index = i;
 
       //create range over instances and features
       auto sent_inst_rng = make_sentence_instance_range(sentences, features);
@@ -466,6 +468,8 @@ namespace foo {
 
       //read in training data
       auto sentences = make_sentences(conf.input_file);
+      for (size_t i = 0; i < sentences.size(); ++i)
+        std::get<0>(sentences[i]).index = i;
 
       //create range over instances and features
       auto sent_inst_rng = make_sentence_instance_range(sentences, static_cast<feature_registry_t const&>(features));

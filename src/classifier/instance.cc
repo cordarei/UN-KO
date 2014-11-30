@@ -39,7 +39,7 @@ namespace foo {
             std::move(split_points)
           }};
       }
-      return { std::move(words), std::move(tags), std::move(ans) };
+      return { 0, std::move(words), std::move(tags), std::move(ans) };
     }
 
     bool is_legal(instance_t const &i) {
