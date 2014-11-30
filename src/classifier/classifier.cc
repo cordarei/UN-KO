@@ -59,6 +59,10 @@ namespace foo {
 
     using feature_registry_t = foo::feature_registry_t<foo::classifier::instance_t, std::string>;
 
+    //
+    // POS features
+    //
+
     std::vector<std::string> global_pos_unigram_features(instance_t const & instance) {
       log("enter");
       auto left = instance.sentence().tags | ranges::view::take(instance.sp());
@@ -175,6 +179,126 @@ namespace foo {
       return fvs;
     }
 
+    //
+    // Word features
+    //
+
+    std::vector<std::string> global_word_unigram_features(instance_t const & instance) {
+      log("enter");
+      auto left = instance.sentence().words | ranges::view::take(instance.sp());
+      auto right = instance.sentence().words | ranges::view::drop(instance.sp());
+
+      auto fvs = std::vector<std::string>{};
+
+      ranges::push_back(fvs, left | ranges::view::transform([](auto & ug) {
+            return concat("left_unigram:", ug);
+          }));
+      ranges::push_back(fvs, right | ranges::view::transform([](auto & ug) {
+            return concat("right_unigram:", ug);
+          }));
+
+      log("leave");
+      return fvs;
+    }
+
+    std::vector<std::string> global_word_bigram_features(instance_t const & instance) {
+      if (instance.cache().word_bigrams.empty()) {
+        instance.cache().word_bigrams = bigrams(instance.sentence().words);
+      }
+
+      auto left = instance.cache().word_bigrams | ranges::view::take(subclamp(instance.sp(), 1u));
+      auto right = instance.cache().word_bigrams | ranges::view::drop(instance.sp());
+
+      auto fvs = std::vector<std::string>{};
+
+      ranges::push_back(fvs, left | ranges::view::transform([](auto & bg) {
+            return concat("left_bigram:", std::get<0>(bg), "^", std::get<1>(bg));
+          }));
+      ranges::push_back(fvs, right | ranges::view::transform([](auto & bg) {
+            return concat("right_bigram:", std::get<0>(bg), "^", std::get<1>(bg));
+          }));
+
+      return fvs;
+    }
+
+    std::vector<std::string> global_word_trigram_features(instance_t const & instance) {
+      log("enter");
+      if (instance.cache().word_trigrams.empty()) {
+        instance.cache().word_trigrams = trigrams(instance.sentence().words);
+      }
+
+      auto left = instance.cache().word_trigrams | ranges::view::take(subclamp(instance.sp(), 2u));
+      auto right = instance.cache().word_trigrams | ranges::view::drop(std::min(instance.cache().word_trigrams.size(), instance.sp()));
+      log(instance.sentence().words.size() << " " << instance.cache().word_trigrams.size() << " " << instance.sp() << " " << ranges::distance(right));
+
+      auto fvs = std::vector<std::string>{};
+
+      log("do left");
+      ranges::push_back(fvs, left | ranges::view::transform([](auto & tg) {
+            return concat("left_trigram:", std::get<0>(tg), "^", std::get<1>(tg), "^", std::get<2>(tg));
+          }));
+      log("do right");
+      ranges::push_back(fvs, right | ranges::view::transform([](auto & tg) {
+            return concat("right_trigram:", std::get<0>(tg), "^", std::get<1>(tg), "^", std::get<2>(tg));
+          }));
+
+      log("leave");
+      return fvs;
+    }
+
+    std::vector<std::string> global_word_prefix_features(instance_t const & instance) {
+      auto fvs = std::vector<std::string>{};
+
+      auto & words = instance.sentence().words;
+      auto len = words.size();
+      auto sp = instance.sp();
+
+      auto left = words | ranges::view::take(sp);
+      auto right = words | ranges::view::drop(sp);
+
+      for (size_t i : {1, 2, 3, 4}) {
+        if (sp > i) {
+          fvs.push_back(concat("global_word_prefix_left:", foo::join(words | ranges::view::take(i), "^")));
+          fvs.push_back(concat("global_word_suffix_left:", foo::join(words | ranges::view::slice(sp - i, sp), "^")));
+        } else if (sp == i) {
+          fvs.push_back(concat("global_word_prefsuff_left:<s>", foo::join(left, "^"), "</s>"));
+        }
+        if (len > (sp + i)) {
+          fvs.push_back(concat("global_word_prefix_right:", foo::join(words | ranges::view::slice(sp, sp + i), "^")));
+          fvs.push_back(concat("global_word_suffix_right:", foo::join(words | ranges::view::slice(len - i, len), "^")));
+        } else if (len == (sp + i)) {
+          fvs.push_back(concat("global_word_prefsuff_right:<s>", foo::join(right, "^"), "</s>"));
+        }
+      }
+      return fvs;
+    }
+
+    std::vector<std::string> local_word_features(instance_t const & instance) {
+      auto fvs = std::vector<std::string>{};
+
+      auto & words = instance.sentence().words;
+      auto len = words.size();
+      auto sp = instance.sp();
+
+      for (auto i = subclamp(sp, 3); i < sp; ++i) {
+        auto left = words | ranges::view::slice(i, sp);
+        fvs.push_back(concat("local_word_left:", foo::join(left, "^")));
+      }
+      for (auto i = std::min(sp, sp + 3); i > sp; --i) {
+        auto right = words | ranges::view::slice(sp, i);
+        fvs.push_back(concat("local_word_right:", foo::join(right, "^")));
+      }
+      for (size_t i : {1, 2, 3}) {
+        if (sp >= i && len >= (sp + i)) {
+          auto left = words | ranges::view::slice(subclamp(sp, i), sp);
+          auto right = words | ranges::view::slice(sp, sp + i);
+          fvs.push_back(concat("local_word_around:", foo::join(left, "^"), "|", foo::join(right, "^")));
+        }
+      }
+
+      return fvs;
+    }
+
     feature_registry_t make_feature_registry(feature_config_t const & conf) {
       auto features = feature_registry_t{};
       if (conf.global) {
@@ -184,10 +308,19 @@ namespace foo {
           features.add_feature(global_pos_trigram_features);
           features.add_feature(global_pos_prefix_features);
         }
+        if (conf.word) {
+          features.add_feature(global_word_unigram_features);
+          features.add_feature(global_word_bigram_features);
+          features.add_feature(global_word_trigram_features);
+          features.add_feature(global_word_prefix_features);
+        }
       }
       if (conf.local) {
         if (conf.pos) {
           features.add_feature(local_pos_features);
+        }
+        if (conf.word) {
+          features.add_feature(local_word_features);
         }
       }
       return features;
