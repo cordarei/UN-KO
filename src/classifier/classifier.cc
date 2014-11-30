@@ -129,14 +129,21 @@ namespace foo {
       auto len = tags.size();
       auto sp = instance.sp();
 
+      auto left = tags | ranges::view::take(sp);
+      auto right = tags | ranges::view::drop(sp);
+
       for (size_t i : {1, 2, 3, 4}) {
-        if (sp >= i) {
+        if (sp > i) {
           fvs.push_back(concat("global_pos_prefix_left:", foo::join(tags | ranges::view::take(i), "^")));
           fvs.push_back(concat("global_pos_suffix_left:", foo::join(tags | ranges::view::slice(sp - i, sp), "^")));
+        } else if (sp == i) {
+          fvs.push_back(concat("global_pos_prefsuff_left:<s>", foo::join(left, "^"), "</s>"));
         }
-        if (len >= (sp + i)) {
+        if (len > (sp + i)) {
           fvs.push_back(concat("global_pos_prefix_right:", foo::join(tags | ranges::view::slice(sp, sp + i), "^")));
           fvs.push_back(concat("global_pos_suffix_right:", foo::join(tags | ranges::view::slice(len - i, len), "^")));
+        } else if (len == (sp + i)) {
+          fvs.push_back(concat("global_pos_prefsuff_right:<s>", foo::join(right, "^"), "</s>"));
         }
       }
       return fvs;
@@ -175,6 +182,7 @@ namespace foo {
           features.add_feature(global_pos_unigram_features);
           features.add_feature(global_pos_bigram_features);
           features.add_feature(global_pos_trigram_features);
+          features.add_feature(global_pos_prefix_features);
         }
       }
       if (conf.local) {
