@@ -13,6 +13,8 @@
 
 #include <range/v3/lines_range.hpp>
 #include <range/v3/range_for.hpp>
+#include <range/v3/algorithm/find.hpp>
+#include <range/v3/algorithm/sort.hpp>
 #include <range/v3/view/zip.hpp>
 #include <range/v3/view/drop.hpp>
 
@@ -55,8 +57,10 @@ namespace foo {
         auto && fs = ff(instance);
         for(auto && fv : fs) {
           auto it = map_.find(fv);
-          if (it != std::end(map_)) {
-            feature_ids.push_back(it->second);
+          if (it != ranges::end(map_)) {
+            if (ranges::find(feature_ids, it->second) == ranges::end(feature_ids)) {
+              feature_ids.push_back(it->second);
+            }
           } else {
             auto id = next_id_++;
             assert(id < next_id_);
@@ -65,6 +69,7 @@ namespace foo {
           }
         }
       }
+      ranges::sort(feature_ids);
 
       return feature_ids;
     }
@@ -77,10 +82,13 @@ namespace foo {
         for(auto && fv : fs) {
           auto it = map_.find(fv);
           if (it != std::end(map_)) {
-            feature_ids.push_back(it->second);
+            if (ranges::find(feature_ids, it->second) == ranges::end(feature_ids)) {
+              feature_ids.push_back(it->second);
+            }
           }
         }
       }
+      ranges::sort(feature_ids);
 
       return feature_ids;
     }

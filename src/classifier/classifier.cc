@@ -9,7 +9,7 @@
 #include <foo/weights.h>
 #include <foo/utility/container.h>
 #include <range/v3/algorithm/sort.hpp>
-#include <range/v3/algorithm/transform.hpp>
+#include <range/v3/algorithm/unique.hpp>
 #include <range/v3/algorithm/for_each.hpp>
 #include <range/v3/view/iota.hpp>
 #include <range/v3/view/flatten.hpp>
@@ -368,7 +368,8 @@ namespace foo {
                  | ranges::view::transform([&](auto sp) mutable {
                      auto i = instance_t{sent, cache, sp};
                      auto fs = features(i);
-                     ranges::sort(fs);
+                     // ranges::sort(fs);
+                     // ranges::unique(fs);
                      return std::make_tuple(i, std::move(fs));
                    });
           });
@@ -376,12 +377,14 @@ namespace foo {
 
 
     template <typename Rng>
-    weights_t train_binary(Rng && instances, size_t max_id) {
+    weights_t train_binary(Rng && instances, size_t max_id, std::string const &outfile) {
+      std::ofstream fout;
+      if (!outfile.empty()) { fout.open(outfile); }
       auto w = weights_t{max_id};
       auto u = weights_t{max_id};
       auto c = 0;
       // for (auto && tpl : instances) {
-      RANGES_FOR(auto && tpl, instances) {
+      RANGES_FOR(auto const& tpl, instances) {
         auto & in = std::get<0>(tpl);
         auto & fs = std::get<1>(tpl);
         auto y_ = w.score(fs) > 0.;
@@ -392,6 +395,13 @@ namespace foo {
           u.update(fs, z * c);
         }
         ++c;
+        if (fout.is_open()) {
+          fout << (y ? "+1" : "-1");
+          for (auto f : fs) {
+            fout << " " << f << ":1";
+          }
+          fout << std::endl;
+        }
       }
       w.update(u, -1.0/c);
       return w;
@@ -435,7 +445,7 @@ namespace foo {
       if (conf.classifier == classifier_type_t::binary) {
         auto instances = sent_inst_rng | ranges::view::flatten;
         ranges::for_each(instances, [](auto && x) {});
-        w = train_binary(instances, features.max_id());
+        w = train_binary(instances, features.max_id(), conf.output_file);
       } else {
         // auto instances = make_vector(sent_inst_rng, [](auto &&rng) { return make_vector(rng); });
         // w = train_multiclass(instances, conf.update, features.max_id());
