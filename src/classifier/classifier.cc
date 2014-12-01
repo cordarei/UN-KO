@@ -482,24 +482,50 @@ namespace foo {
       }
 
       if (conf.classifier == classifier_type_t::binary) {
-        auto instances = sent_inst_rng | ranges::view::flatten;
+        std::ofstream fout;
+        bool first = true;
+        if (!conf.output_file.empty()) {
+          fout.open(conf.output_file);
+          fout << "{ \"sentences\": [\n";
+        }
+        //auto instances = sent_inst_rng | ranges::view::flatten;
         auto results = classification_results{};
-        ranges::for_each(instances, [&results,&w](auto && tpl) {
-            using result_t = classification_results::result_t;
-            auto & in = std::get<0>(tpl);
-            auto & fs = std::get<1>(tpl);
-            auto y_ = w.score(fs) > 0.;
-            auto y = is_legal(in);
-            auto res = (y ? (y_ ? result_t::tp : result_t::fn) : (y_ ? result_t::fp : result_t::tn));
-            results.add(res);
+        ranges::for_each(sent_inst_rng, [&](auto && instances) {
+            auto system_split_points = std::vector<offset_t>{};
+            ranges::for_each(instances, [&](auto && tpl) {
+                using result_t = classification_results::result_t;
+                auto & in = std::get<0>(tpl);
+                auto & fs = std::get<1>(tpl);
+                auto y_ = w.score(fs) > 0.;
+                auto y = is_legal(in);
+                auto res = (y ? (y_ ? result_t::tp : result_t::fn) : (y_ ? result_t::fp : result_t::tn));
+                results.add(res);
+                if (y_) {
+                  system_split_points.push_back(in.sp());
+                }
+              });
+            if (fout.is_open()) {
+              if (!first) { fout << ",\n"; }
+              first = false;
+              fout << "  { \"system_split_points\": ["
+                   << foo::join(
+                                system_split_points
+                                | ranges::view::transform([](auto sp) { return std::to_string(sp); }),
+                                ", ")
+                   << "] }";
+            }
           });
+        if (fout.is_open()) {
+          fout << "\n  ]\n}\n";
+          fout.close();
+        }
 
         std::cout << "Binary Classifier Results:" << std::endl;
         std::cout << "TP\tFP\tTN\tFN" << std::endl;
         std::cout << results.tp() << "\t"
                   << results.fp() << "\t"
                   << results.tn() << "\t"
-                  << results.fn() << "\t" << std::endl;;
+                  << results.fn() << "\t" << std::endl;
         std::cout << "Accuracy: \t" << results.accuracy() << std::endl;
         std::cout << "Recall: \t" << results.recall() << std::endl;
         std::cout << "Precision: \t" << results.precision() << std::endl;
