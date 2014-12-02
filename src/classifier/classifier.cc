@@ -496,7 +496,9 @@ namespace foo {
         bool first = true;
         if (!conf.output_file.empty()) {
           fout.open(conf.output_file);
-          fout << "{ \"sentences\": [\n";
+          if (conf.output_format == output_format_t::json) {
+            fout << "{ \"sentences\": [\n";
+          }
         }
         //auto instances = sent_inst_rng | ranges::view::flatten;
         auto results = classification_results{};
@@ -513,20 +515,33 @@ namespace foo {
                 if (y_) {
                   system_split_points.push_back(in.sp());
                 }
+                if (fout.is_open()) {
+                  if (conf.output_format == output_format_t::svm) {
+                    fout << (y ? "+1" : "-1");
+                    for (auto f : fs) {
+                      fout << " " << f << ":1";
+                    }
+                    fout << std::endl;
+                  }
+                }
               });
             if (fout.is_open()) {
-              if (!first) { fout << ",\n"; }
-              first = false;
-              fout << "  { \"system_split_points\": ["
-                   << foo::join(
-                                system_split_points
-                                | ranges::view::transform([](auto sp) { return std::to_string(sp); }),
-                                ", ")
-                   << "] }";
+              if (conf.output_format == output_format_t::json) {
+                if (!first) { fout << ",\n"; }
+                first = false;
+                fout << "  { \"system_split_points\": ["
+                     << foo::join(
+                                  system_split_points
+                                  | ranges::view::transform([](auto sp) { return std::to_string(sp); }),
+                                  ", ")
+                     << "] }";
+              }
             }
           });
         if (fout.is_open()) {
-          fout << "\n  ]\n}\n";
+          if (conf.output_format == output_format_t::json) {
+            fout << "\n  ]\n}\n";
+          }
           fout.close();
         }
 

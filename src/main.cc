@@ -22,6 +22,7 @@ u8R"(  foo
     --feat-word        Word features
     --feat-global      Global features
     --feat-local       Local Features
+    --svm-format       Output instances in SVM format
 )";
 constexpr auto VERSION = u8"foo 0.0.0";
 

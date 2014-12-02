@@ -28,10 +28,13 @@ namespace foo {
       edges
     };
 
+    enum class output_format_t { json, svm };
+
     struct config_t {
       feature_config_t features;
       classifier_type_t classifier;
       update_t update;
+      output_format_t output_format;
       std::string input_file;
       std::string output_file; //optional
       std::string weights_file;
@@ -43,6 +46,7 @@ namespace foo {
       auto conf = config_t{};
       conf.classifier = classifier_type_t::binary;
       conf.update = update_t::default_update;
+      conf.output_format = output_format_t::json;
 
       // auto upd = check_docopt_arg<std::string>(args, "--update");
       // if (upd) {
@@ -58,6 +62,7 @@ namespace foo {
       conf.weights_file = model + ".weights";
       conf.feature_file = model + ".features";
 
+
       auto out = check_docopt_arg<std::string>(args, "--output");
       if (out) {
         conf.output_file = *out;
@@ -67,6 +72,10 @@ namespace foo {
       conf.features.word = check_docopt_flag(args, "--feat-word");
       conf.features.global = check_docopt_flag(args, "--feat-global");
       conf.features.local = check_docopt_flag(args, "--feat-local");
+
+      if (check_docopt_flag(args, "--svm-format")) {
+        conf.output_format = output_format_t::svm;
+      }
 
       return conf;
     }
