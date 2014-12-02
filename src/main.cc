@@ -11,7 +11,7 @@ u8R"(  foo
   Usage:
     foo classifier train [options]
     foo classifier test [options]
-    foo parser extract-grammar
+    foo parser extract-grammar [options]
     foo parser run [options]
 
   Options:
@@ -46,10 +46,10 @@ int main(int argc, const char** argv) {
 
   if (check_docopt_command(args, {"parser", "extract-grammar"})) {
     std::cout << "extracting grammar with parser" << std::endl;
-    return parser::extract_grammar();
+    return parser::extract_grammar(args);
   }
   if (check_docopt_command(args, {"parser", "run"})) {
     std::cout << "running parser" << std::endl;
-    return parser::run();
+    return parser::run(args);
   }
 }
