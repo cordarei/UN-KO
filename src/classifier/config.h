@@ -37,6 +37,7 @@ namespace foo {
       output_format_t output_format;
       std::string input_file;
       std::string output_file; //optional
+      std::string model_file;
       std::string weights_file;
       std::string feature_file;
     };
@@ -59,6 +60,7 @@ namespace foo {
       conf.input_file = *check_docopt_arg<std::string>(args, "--input");
 
       auto model = *check_docopt_arg<std::string>(args, "--model");
+      conf.model_file = model;
       conf.weights_file = model + ".weights";
       conf.feature_file = model + ".features";
 

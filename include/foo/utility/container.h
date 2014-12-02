@@ -21,6 +21,14 @@ std::vector<V> make_vector(Rng && rng, P proj = P{}) {
   return transformed;
 }
 
+
+  template<typename T, typename U>
+  std::vector<T> operator+(std::vector<T> const & v, U && u) {
+    std::vector<T> result{v};
+    result.emplace_back(std::forward<U>(u));
+    return result;
+  }
+
 }
 
 #endif
