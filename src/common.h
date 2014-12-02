@@ -61,6 +61,31 @@ namespace {
     return json::parse(read_all(is), err);
   }
 
+  inline
+  size_t subclamp(size_t left, size_t right) {
+    if (left < right) {
+      return 0;
+    } else {
+      return left - right;
+    }
+  }
+
+  template <typename S>
+  std::string concat(S && s) {
+    auto result = std::string{std::forward<S>(s)};
+    return result;
+  }
+
+  template <typename S1, typename S2, typename ...Ss>
+  std::string concat(S1 && s1, S2 && s2, Ss &&... rest) {
+    auto result = std::string{std::forward<S1>(s1)};
+    result += std::forward<S2>(s2);
+    if (0 < sizeof...(Ss)) {
+      result = concat(std::move(result), std::forward<Ss>(rest)...);
+    }
+    return result;
+  }
+
 
 #if 0
 #define log(x) std::cerr << __FILE__ << "::" << __LINE__ << " " << __FUNCTION__ << " -- " << x << std::endl
