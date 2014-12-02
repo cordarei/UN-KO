@@ -8,12 +8,14 @@
 #include <unordered_map>
 #include <vector>
 #include <algorithm>
+#include <regex>
 
 #include <range/v3/algorithm/for_each.hpp>
 #include <range/v3/algorithm/find_if.hpp>
 #include <range/v3/view/to_container.hpp>
 #include <range/v3/view/zip.hpp>
 #include <range/v3/view/transform.hpp>
+#include <range/v3/range_for.hpp>
 
 #include <foo/types.h>
 #include <foo/span.h>
@@ -140,7 +142,13 @@ namespace foo {
       }
 
       auto find_lhs() const;
-      auto find_left_corner() const;
+
+      auto find_left_corner(std::string const &label) const {
+        auto empty = std::vector<rule_t const *>{};
+        auto it = left_corner_map_.find(label);
+        auto & rules = (it == left_corner_map_.end() ? empty : it->second);
+        return ranges::view::transform(rules, [](rule_t const *r) { return *r; });
+      }
 
     private:
       void index_rule(rule_t &r) {
@@ -241,7 +249,7 @@ namespace foo {
       auto begin() const { return children_.begin(); }
       auto end() const { return children_.end(); }
 
-      tree_t const & add_child(std::string l) {
+      tree_t & add_child(std::string l) {
         children_.emplace_back(std::make_unique<tree_t>(std::move(l)));
         return *children_.back();
       }
@@ -254,6 +262,11 @@ namespace foo {
     };
 
     std::ostream & operator<<(std::ostream & os, tree_t const &t) {
+      os << "(" << t.label();
+      for (auto && childptr : t) {
+        os << " " << *childptr;
+      }
+      os << ")";
       return os;
     }
 
@@ -303,19 +316,72 @@ namespace foo {
           }
         }
 
-        return tree_t{"TOP"};
+        auto it = ranges::find_if(chart[{0, n}], [](auto && item) { return item.label() == "ROOT" || item.label() == "TOP"; });
+        if (it == chart[{0, n}].end()) {
+          return {"ERROR"};
+        } else {
+          return make_tree(*it);
+        }
+      }
+
+      tree_t make_tree(chart_t::item_t const & item) const {
+        tree_t tree = tree_t{item.label()};
+        for (auto ptr : item.backpointers()) {
+          make_tree_helper(tree, *ptr);
+        }
+        return tree;
       }
 
     private:
       void introduce_items(chart_t & chart, size_t i, size_t j) const {
+        auto done = false;
+        while (!done) {
+          auto updated = false;
+          for (auto && item : chart[{i,j}]) {
+            if (item.complete()) {
+              RANGES_FOR (auto && rule, grammar_.find_left_corner(item.label())) {
+                updated = chart.update(rule, {&item}, i, j, rule.prob() * item.weight()) || updated;
+              }
+              if (updated) break;
+            }
+          }
+          done = !updated;
+        }
+      }
+
+      void make_tree_helper(tree_t & parent, chart_t::item_t const & item) const {
+        auto & child = parent.add_child(item.label());
+        for (auto ptr : item.backpointers()) {
+          make_tree_helper(child, *ptr);
+        }
       }
 
       grammar_t grammar_;
     };
 
+    std::vector<std::string> split(std::string const &s, std::string const &pat) {
+      auto result = std::vector<std::string>{};
+      std::regex re(pat);
+      std::copy(std::sregex_token_iterator(s.begin(), s.end(), re, -1),
+                std::sregex_token_iterator(),
+                std::back_inserter(result));
+      return result;
+    }
 
     grammar_t read_grammar(std::string const &filename) {
-      return {};
+      std::ifstream fin{filename};
+      auto grammar = grammar_t{};
+      RANGES_FOR (auto && line, ranges::lines(fin)) {
+        auto tabpos = line.find('\t');
+        auto prob = std::stod(line.substr(tabpos + 1));
+        auto s = line.substr(0, tabpos);
+        auto ss = split(s, " ");
+        auto lhs = ss.front();
+        ss.erase(ss.begin());
+        grammar.add_rule(rule_t{std::move(lhs), std::move(ss), prob});
+      }
+      grammar.sort();
+      return grammar;
     }
 
     int run(docopt_t const & args) {
