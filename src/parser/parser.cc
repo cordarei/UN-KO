@@ -412,9 +412,7 @@ namespace foo {
       bool complete(rule_t const & rule, backpointers_t backpointers, size_t begin, size_t end, double weight) {
         log("enter");
         auto & list = this->cell(begin, end).complete();
-        log("?");
-        auto prev = ranges::find_if(list, [&](auto const & item) { log("hi" << item.rule() << "|" << rule); return item.rule().lhs() == rule.lhs(); });
-        log("??");
+        auto prev = ranges::find_if(list, [&](auto const & item) { return item.rule().lhs() == rule.lhs(); });
         if (prev == list.end()) {
           log("prev == list.end()");
           list.emplace_back(rule, std::move(backpointers), begin, end, weight);
@@ -510,21 +508,25 @@ namespace foo {
         return *children_.back();
       }
 
+      friend std::ostream & operator<<(std::ostream & os, tree_t const &t) {
+        os << "(" << t.label();
+        if (t.children_.size() == 1 && t.children_[0]->children_.size() == 0) {
+          os << " " << t.children_[0]->label();
+        } else {
+          for (auto && childptr : t) {
+            os << " " << *childptr;
+          }
+        }
+        os << ")";
+        return os;
+      }
+
     private:
       using child_t = std::unique_ptr<tree_t>;
 
       std::string label_;
       std::vector<child_t> children_;
     };
-
-    std::ostream & operator<<(std::ostream & os, tree_t const &t) {
-      os << "(" << t.label();
-      for (auto && childptr : t) {
-        os << " " << *childptr;
-      }
-      os << ")";
-      return os;
-    }
 
     //
     class parser_t {
@@ -606,11 +608,11 @@ namespace foo {
           return {"ERROR"};
         } else {
           std::cerr << "Parse with " << it->rule().rhs()[0] << std::endl;
-          return make_tree(chart, *it);
+          return make_tree(chart, words, *it);
         }
       }
 
-      tree_t make_tree(chart_t const & chart, chart_t::complete_item_t const & item) const {
+      tree_t make_tree(chart_t const & chart, std::vector<std::string> const & words, chart_t::complete_item_t const & item) const {
         std::cerr << "make_tree() enter" << std::endl;
         std::cerr << "<root rule=|" << item.rule() << "|>" << std::endl;
         tree_t tree = tree_t{item.label()};
@@ -618,8 +620,11 @@ namespace foo {
           // auto & ch = chart[bp];
           // std::cerr << "  (" << bp.i << "," << bp.j << "," << bp.k << ") : " << ch.rule() << std::endl;
           std::cerr << "<item rule=|" << item.rule() << "| bp=|"<< bp.i << "," << bp.j << "," << bp.k << "|>" << std::endl;
-          make_tree_helper(chart, tree, chart[bp]);
+          make_tree_helper(chart, words, tree, chart[bp]);
           std::cerr << "</item>" << std::endl;
+        }
+        if (item.backpointers().empty()) {
+          tree.add_child(words[item.begin()]);
         }
         std::cerr << "</root>" << std::endl;
         return tree;
@@ -668,12 +673,15 @@ namespace foo {
         }
       }
 
-      void make_tree_helper(chart_t const & chart, tree_t & parent, chart_t::complete_item_t const & item) const {
+      void make_tree_helper(chart_t const & chart, std::vector<std::string> const & words, tree_t & parent, chart_t::complete_item_t const & item) const {
         auto & child = parent.add_child(item.label());
         for (auto bp : item.backpointers()) {
           std::cerr << "<item rule=|" << item.rule() << "| bp=|"<< bp.i << "," << bp.j << "," << bp.k << "| w=|" << item.weight() << "|>" << std::endl;
-          make_tree_helper(chart, child, chart[bp]);
+          make_tree_helper(chart, words, child, chart[bp]);
           std::cerr << "</item>" << std::endl;
+        }
+        if (item.backpointers().empty()) {
+          child.add_child(words[item.begin()]);
         }
       }
 
