@@ -129,6 +129,118 @@ namespace foo {
       return os;
     }
 
+    class trie_t {
+    private:
+      static std::string const end_key;
+
+      struct node_t {
+        explicit node_t(rule_t const &r) : key_{trie_t::end_key}, data_{&r} {}
+        explicit node_t(std::string key) : key_{std::move(key)}, next_{} {}
+        ~node_t() {
+          if (key_ != trie_t::end_key) {
+            next_.~vector<std::unique_ptr<node_t> >();
+          }
+        }
+        node_t(node_t && n) : key_{std::move(n.key_)}, data_{} {
+          if (key_ != trie_t::end_key) {
+            next_ = std::move(n.next_);
+          } else {
+            data_ = n.data_;
+          }
+        }
+
+        std::string const & key() const { return key_; };
+
+        node_t & add_child(rule_t const &r) {
+          assert(!end());
+          next_.push_back(std::make_unique<node_t>(r));
+          return *next_.back();
+        }
+
+        node_t & add_child(std::string const & k) {
+          assert(!end());
+          for (auto & ptr : next_) {
+            if (ptr->key_ == k)
+              return *ptr;
+          }
+          next_.push_back(std::make_unique<node_t>(k));
+          return *next_.back();
+        }
+
+        node_t const * get_child(std::string const & k) const {
+          if (key_ == trie_t::end_key)
+            return nullptr;
+
+          for (auto & ptr : next_) {
+            if (ptr->key_ == k)
+              return ptr.get();
+          }
+
+          return nullptr;
+        }
+
+        bool end() const { return key_ == trie_t::end_key; }
+        rule_t const * get_end() const {
+          if (end()) return data_;
+          else return nullptr;
+        }
+
+      private:
+        std::string const key_;
+        union {
+          std::vector<std::unique_ptr<node_t> > next_;
+          rule_t const * data_;
+        };
+      };
+
+      std::vector<node_t> roots_;
+
+    public:
+      class cursor {
+        friend class trie_t;
+        node_t const * cur_;
+        cursor(node_t const * n) : cur_{n} {}
+      public:
+        cursor next(std::string const & key) const {
+          assert(cur_ != nullptr);
+          return cursor(cur_->get_child(key));
+        }
+        rule_t const * end() const {
+          assert(cur_ != nullptr);
+          auto n = cur_->get_child(trie_t::end_key);
+          if (n) return n->get_end();
+          else return nullptr;
+        }
+        explicit operator bool() const { return cur_ != nullptr; }
+      };
+
+      void add_rule(rule_t const &rule) {
+        node_t * start = nullptr;
+        for (auto & n : roots_) {
+          if (rule.lhs() == n.key()) {
+            start = &n;
+          }
+        }
+        if (start == nullptr) {
+          roots_.emplace_back(rule.lhs());
+          start = &roots_.back();
+        }
+        for (auto && k : rule.rhs()) {
+          start = &start->add_child(k);
+        }
+        start->add_child(rule);
+      }
+
+      cursor start(std::string const & key) const {
+        for (auto & n : roots_) {
+          if (n.key() == key)
+            return cursor(&n);
+        }
+        return cursor(nullptr);
+      }
+    };
+    std::string const trie_t::end_key = "<$>";
+
     //
     class grammar_t {
     public:
