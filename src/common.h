@@ -101,13 +101,19 @@ namespace {
   };
 
   //#define VERBOSE
+  //#define LOG
 
 #ifdef VERBOSE
-#define log(x) std::cerr << __FILE__ << "::" << __LINE__ << " " << __PRETTY_FUNCTION__ << " -- " << x << std::endl
+#define LOG
 #define trace() tracer_t trace_42{__FILE__, __PRETTY_FUNCTION__, __LINE__}
 #else
-#define log(x)
 #define trace()
+#endif
+
+#ifdef LOG
+#define log(x) std::cerr << __FILE__ << "::" << __LINE__ << " " << __PRETTY_FUNCTION__ << " -- " << x << std::endl
+#else
+#define log(x)
 #endif
 }
 

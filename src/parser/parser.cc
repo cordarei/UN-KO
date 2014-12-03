@@ -2,6 +2,7 @@
 
 #include <utility>
 #include <memory>
+#include <new>
 #include <functional>
 #include <fstream>
 #include <iostream>
@@ -134,16 +135,19 @@ namespace foo {
       static std::string const end_key;
 
       struct node_t {
-        explicit node_t(rule_t const &r) : key_{trie_t::end_key}, data_{&r} {}
-        explicit node_t(std::string key) : key_{std::move(key)}, next_{} {}
+        explicit node_t(rule_t const &r) : key_{trie_t::end_key}, data_{&r} {trace();}
+        explicit node_t(std::string key) : key_{std::move(key)}, next_{} {trace();}
         ~node_t() {
+          trace();
           if (key_ != trie_t::end_key) {
             next_.~vector<std::unique_ptr<node_t> >();
           }
         }
         node_t(node_t && n) : key_{std::move(n.key_)}, data_{} {
+          trace();
           if (key_ != trie_t::end_key) {
-            next_ = std::move(n.next_);
+            //next_ = std::move(n.next_);
+            new (&next_) std::vector<std::unique_ptr<node_t> >(std::move(n.next_));
           } else {
             data_ = n.data_;
           }
@@ -152,12 +156,14 @@ namespace foo {
         std::string const & key() const { return key_; };
 
         node_t & add_child(rule_t const &r) {
+          trace();
           assert(!end());
           next_.push_back(std::make_unique<node_t>(r));
           return *next_.back();
         }
 
         node_t & add_child(std::string const & k) {
+          trace();
           assert(!end());
           for (auto & ptr : next_) {
             if (ptr->key_ == k)
@@ -168,6 +174,7 @@ namespace foo {
         }
 
         node_t const * get_child(std::string const & k) const {
+          trace();
           if (key_ == trie_t::end_key)
             return nullptr;
 
@@ -212,9 +219,12 @@ namespace foo {
           else return nullptr;
         }
         explicit operator bool() const { return cur_ != nullptr; }
+        bool operator==(cursor const &o) { return cur_ == o.cur_; }
+        bool operator!=(cursor const &o) { return cur_ != o.cur_; }
       };
 
       void add_rule(rule_t const &rule) {
+        trace();
         node_t * start = nullptr;
         for (auto & n : roots_) {
           if (rule.lhs() == n.key()) {
@@ -238,6 +248,7 @@ namespace foo {
         }
         return cursor(nullptr);
       }
+      std::vector<node_t> const & roots() const { return roots_; }
     };
     std::string const trie_t::end_key = "<$>";
 
@@ -245,51 +256,74 @@ namespace foo {
     class grammar_t {
     public:
       void add_rule(rule_t rule) {
+        trace();
         rules_.emplace_back(std::move(rule));
-        index_rule(rules_.back());
       }
-      void sort() {
-        lh_map_.clear();
-        left_corner_map_.clear();
-
-        ranges::sort(rules_);
-        //ranges::sort(rules_, ranges::less{});
-        //ranges::sort(rules_, std::less<>{});
-        //std::sort(rules_.begin(), rules_.end());
-
-        for (auto & r : rules_) {
-          index_rule(r);
-        }
+      void index() {
+        for (auto && rule : rules_) trie_.add_rule(rule);
       }
 
-      auto find_lhs() const;
-
-      decltype(auto) find_left_corner(std::string const &label) const {
-        static auto const empty = std::vector<rule_t const *>{};
-        auto it = left_corner_map_.find(label);
-        auto const & rules = (it == left_corner_map_.end() ? empty : it->second);
-        // return ranges::view::transform(rules, [](rule_t const *r) { return std::cref(*r); });
-        return rules;
-      }
+      trie_t const & trie() const { return trie_; }
 
     private:
-      void index_rule(rule_t &r) {
-        auto & lhv = lh_map_[r.lhs()];
-        auto & lcv = left_corner_map_[r.rhs()[0]];
-        lhv.push_back(&r);
-        lcv.push_back(&r);
-      }
-
-      using map_t = std::unordered_map<std::string, std::vector<rule_t const *> >;
 
       std::vector<rule_t> rules_;
-      map_t lh_map_;
-      map_t left_corner_map_;
+      trie_t trie_;
     };
 
     //
     class chart_t {
     public:
+      struct backpointer {
+        size_t i;
+        size_t j;
+        size_t k;
+        backpointer(size_t a, size_t b, size_t c) : i{a}, j{b}, k{c} {}
+      };
+      using backpointers_t = std::vector<backpointer>;
+      using state_t = trie_t::cursor;
+
+      struct item_t {
+        item_t(backpointers_t bps, size_t b, size_t e, double w)
+          : backpointers_{std::move(bps)}, begin_{b}, end_{e}, weight_{w}
+        {}
+        backpointers_t const & backpointers() const { return backpointers_; }
+        size_t begin() const { return begin_; }
+        size_t end() const { return end_; }
+        double weight() const { return weight_; }
+
+      private:
+        backpointers_t backpointers_;
+        size_t begin_;
+        size_t end_;
+        double weight_;
+      };
+
+      struct complete_item_t : item_t {
+        complete_item_t(rule_t const & r, backpointers_t bps, size_t b, size_t e, double w)
+          : item_t{std::move(bps), b, e, w}, rule_{&r}
+        {}
+
+        rule_t const & rule() const { return *rule_; }
+        std::string const & label() const { return rule_->lhs(); }
+
+      private:
+        rule_t const * rule_;
+      };
+
+      struct incomplete_item_t : item_t {
+
+        incomplete_item_t(state_t state, backpointers_t bps, size_t b, size_t e, double w)
+          : item_t{std::move(bps), b, e, w}, state_{state}
+        {}
+
+        state_t state() const { return state_; }
+
+      private:
+        trie_t::cursor state_;
+      };
+
+      /*
       struct item_t {
       public:
         using backpointers_t = std::vector<item_t const*>;
@@ -345,19 +379,19 @@ namespace foo {
         size_t end_;
         double weight_;
       };
+      */
 
-      class cell_t : std::pair<std::vector<item_t>, std::vector<item_t>> {
+      class cell_t : std::pair<std::vector<complete_item_t>, std::vector<incomplete_item_t>> {
       public:
-        using base_type = std::pair<std::vector<item_t>, std::vector<item_t>>;
+        using base_type = std::pair<std::vector<complete_item_t>, std::vector<incomplete_item_t>>;
         using base_type::base_type;
         cell_t() : base_type{{}, {}} {}
 
-        std::vector<item_t> const & complete() const { return this->first; }
-        std::vector<item_t> const & incomplete() const { return this->second; }
-        std::vector<item_t> & complete() { return this->first; }
-        std::vector<item_t> & incomplete() { return this->second; }
+        std::vector<complete_item_t> const & complete() const { return this->first; }
+        std::vector<incomplete_item_t> const & incomplete() const { return this->second; }
+        std::vector<complete_item_t> & complete() { return this->first; }
+        std::vector<incomplete_item_t> & incomplete() { return this->second; }
       };
-      // using cell_t = std::vector<item_t>;
 
       explicit chart_t(size_t n) {
         chart_.resize(n);
@@ -369,7 +403,48 @@ namespace foo {
       cell_t const & operator[](std::pair<size_t, size_t> p) const {
         return cell(p.first, p.second);
       }
+      complete_item_t const & operator[](backpointer bp) const {
+        auto & c = cell(bp.i, bp.j).complete();
+        assert(bp.k < c.size());
+        return c[bp.k];
+      }
 
+      bool complete(rule_t const & rule, backpointers_t backpointers, size_t begin, size_t end, double weight) {
+        log("enter");
+        auto & list = this->cell(begin, end).complete();
+        log("?");
+        auto prev = ranges::find_if(list, [&](auto const & item) { log("hi" << item.rule() << "|" << rule); return item.rule().lhs() == rule.lhs(); });
+        log("??");
+        if (prev == list.end()) {
+          log("prev == list.end()");
+          list.emplace_back(rule, std::move(backpointers), begin, end, weight);
+          return true;
+        }
+        if (prev->weight() < weight) {
+          log("prev->weight() < weight");
+          *prev = complete_item_t{rule, std::move(backpointers), begin, end, weight};
+          return true;
+        }
+        log("no update");
+        return false;
+      }
+
+      bool update(state_t const &state, backpointers_t backpointers, size_t begin, size_t end, double weight) {
+        log("enter");
+        auto & list = this->cell(begin, end).incomplete();
+        auto prev = ranges::find_if(list, [&](auto const & item) { return item.state() == state; });
+        if (prev == list.end()) {
+          list.emplace_back(state, std::move(backpointers), begin, end, weight);
+          return true;
+        }
+        if (prev->weight() < weight) {
+          *prev = incomplete_item_t{state, std::move(backpointers), begin, end, weight};
+          return true;
+        }
+        return false;
+      }
+
+      /*
       bool update(rule_t const & rule, item_t::backpointers_t backpointers, size_t begin, size_t end, double weight) {
         log("enter |" << rule << "| " << backpointers.size() << " " << begin << " " << end << " " << weight);
         auto item = item_t{rule, std::move(backpointers), begin, end, weight};
@@ -395,6 +470,7 @@ namespace foo {
 
         return false;
       }
+      */
 
     private:
       cell_t const & cell(size_t i, size_t j) const {
@@ -462,47 +538,60 @@ namespace foo {
         log("initialized chart");
 
         auto lexical_rules =
-          ranges::view::zip(tags,words)
-          | ranges::view::transform([](auto && tup) { return rule_t{std::get<0>(tup), {/*std::get<1>(tup)*/}, 1.0}; })
+          tags
+          | ranges::view::transform([](auto && t) { return rule_t{t, {}, 1.0}; })
           | ranges::view::to_vector;
         log("created lexical rules");
 
         for (size_t i = 0; i < n; ++i) {
-          std::cerr << "Filling cell (" << i << ", " << (i + 1) << ")" << std::endl;
+          //std::cerr << "Filling cell (" << i << ", " << (i + 1) << ")" << std::endl;
           log("Filling cell (" << i << ", " << (i + 1) << ")");
           //add tag[i] as complete span and all rules allowed by tag[i] as (in)complete spans to chart
-          chart.update(lexical_rules[i], {}, i, i + 1, 1.0);
+          chart.complete(lexical_rules[i], {}, i, i + 1, 1.0);
           introduce_items(chart, i, i + 1);
           log("Filled cell with " << (chart[{i, i + 1}].complete().size()) << " complete items and " <<  (chart[{i, i + 1}].incomplete().size()) << " incomplete items.");
-          std:: cerr << "Filled cell with " << (chart[{i, i + 1}].complete().size()) << " complete items and " <<  (chart[{i, i + 1}].incomplete().size()) << " incomplete items." << std::endl;
+          //std::cerr << "Filled cell with " << (chart[{i, i + 1}].complete().size()) << " complete items and " <<  (chart[{i, i + 1}].incomplete().size()) << " incomplete items." << std::endl;
         }
         log("finished initializing terminal cells");
 
         for (size_t j = 2; j <= n; ++j) {
           for (size_t i = 0; i <= (n - j); ++i) {
-            std::cerr << "Filling cell (" << i << ", " << (i + j) << ")" << std::endl;
+            //std::cerr << "Filling cell (" << i << ", " << (i + j) << ")" << std::endl;
             log("Filling cell (" << i << ", " << (i + j) << ")");
             for (size_t k = 1; k < j; ++k) {
               //add all (in)complete spans created by traversing the cross product of left x right
               auto & left = chart[{i, i + k}].incomplete();
               auto & right = chart[{i + k, i + j}].complete();
+              auto bp = chart_t::backpointer{i + k, i + j, 0};
 
               for (auto const & left_item : left) {
+                bp.k = 0;
                 for (auto const & right_item : right) {
-                  if (right_item.label() == left_item.next()) {
-                    chart.update(left_item.rule(),
-                                 left_item.backpointers() + &right_item,
-                                 i,
-                                 i + j,
-                                 left_item.weight() * right_item.weight());
+                  auto state = left_item.state().next(right_item.rule().lhs());
+                  if (state) {
+                    auto rule = state.end();
+                    if (rule == nullptr) {
+                      chart.update(state,
+                                   left_item.backpointers() + bp,
+                                   i,
+                                   i + j,
+                                   left_item.weight() * right_item.weight());
+                    } else {
+                      chart.complete(*rule,
+                                     left_item.backpointers() + bp,
+                                     i,
+                                     i + j,
+                                     left_item.weight() * right_item.weight() * rule->prob());
+                    }
                   }
+                  ++bp.k;
                 }
               }
             }
             //then add (transitively) all (in)complete spans createable by the complete spans in chart[i,j]
             introduce_items(chart, i, i + j);
             log("Filled cell with " << (chart[{i, i + j}].complete().size()) << " complete items and " <<  (chart[{i, i + j}].incomplete().size()) << " incomplete items.");
-            std::cerr << "Filled cell with " << (chart[{i, i + j}].complete().size()) << " complete items and " <<  (chart[{i, i + j}].incomplete().size()) << " incomplete items." << std::endl;
+            //std::cerr << "Filled cell with " << (chart[{i, i + j}].complete().size()) << " complete items and " <<  (chart[{i, i + j}].incomplete().size()) << " incomplete items." << std::endl;
           }
         }
         log("finished filling chart");
@@ -514,17 +603,26 @@ namespace foo {
 
         auto it = ranges::find_if(chart[{0, n}].complete(), [](auto && item) { return item.label() == "ROOT" || item.label() == "TOP"; });
         if (it == chart[{0, n}].complete().end()) {
+          std::cerr << "No complete parse" << std::endl;
           return {"ERROR"};
         } else {
-          return make_tree(*it);
+          std::cerr << "Parse with " << it->rule().rhs()[0] << std::endl;
+          return make_tree(chart, *it);
         }
       }
 
-      tree_t make_tree(chart_t::item_t const & item) const {
+      tree_t make_tree(chart_t const & chart, chart_t::complete_item_t const & item) const {
+        std::cerr << "make_tree() enter" << std::endl;
+        std::cerr << "<root rule=|" << item.rule() << "|>" << std::endl;
         tree_t tree = tree_t{item.label()};
-        for (auto ptr : item.backpointers()) {
-          make_tree_helper(tree, *ptr);
+        for (auto bp : item.backpointers()) {
+          // auto & ch = chart[bp];
+          // std::cerr << "  (" << bp.i << "," << bp.j << "," << bp.k << ") : " << ch.rule() << std::endl;
+          std::cerr << "<item rule=|" << item.rule() << "| bp=|"<< bp.i << "," << bp.j << "," << bp.k << "|>" << std::endl;
+          make_tree_helper(chart, tree, chart[bp]);
+          std::cerr << "</item>" << std::endl;
         }
+        std::cerr << "</root>" << std::endl;
         return tree;
       }
 
@@ -538,29 +636,47 @@ namespace foo {
         while (!done) {
           log("enter while loop");
           auto updated = false;
+          auto bp = chart_t::backpointer{i, j, 0};
           for (auto const & item : chart[{i,j}].complete()) {
             log("complete item " << &item << " " << &item.rule());
             auto const & category = item.label();
             log("introducing rules for complete edge: " << category);
-            size_t count = 0;
-            RANGES_FOR (rule_t const* rule, grammar_.find_left_corner(category)) {
-              log("updating with rule " << rule);
-              ++count;
-              updated = chart.update(*rule, {&item}, i, j, rule->prob() * item.weight()) || updated;
-              log("updated? " << (updated ? "yes" : "no"));
-              if (updated) break;
+            for (auto const & trienode : grammar_.trie().roots()) {
+              auto state = grammar_.trie().start(trienode.key()).next(category);
+              if (state) {
+                log("valid state");
+                auto rule = state.end();
+                if (rule == nullptr) {
+                  log("not finished yet");
+                  chart.update(state, {bp}, i, j, item.weight());
+                } else {
+                  log("complete state");
+                  bool upd = chart.complete(*rule, {bp}, i, j, item.weight() * rule->prob());
+                  updated = upd || updated;
+                }
+              }
             }
-            log("explored " << count << " rules.");
+            // RANGES_FOR (rule_t const* rule, grammar_.find_left_corner(category)) {
+            //   log("updating with rule " << rule);
+            //   ++count;
+            //   updated = chart.update(*rule, {&item}, i, j, rule->prob() * item.weight()) || updated;
+            //   log("updated? " << (updated ? "yes" : "no"));
+            //   if (updated) break;
+            // }
+            // log("explored " << count << " rules.");
             if (updated) break;
+            ++bp.k;
           }
           done = !updated;
         }
       }
 
-      void make_tree_helper(tree_t & parent, chart_t::item_t const & item) const {
+      void make_tree_helper(chart_t const & chart, tree_t & parent, chart_t::complete_item_t const & item) const {
         auto & child = parent.add_child(item.label());
-        for (auto ptr : item.backpointers()) {
-          make_tree_helper(child, *ptr);
+        for (auto bp : item.backpointers()) {
+          std::cerr << "<item rule=|" << item.rule() << "| bp=|"<< bp.i << "," << bp.j << "," << bp.k << "|>" << std::endl;
+          make_tree_helper(chart, child, chart[bp]);
+          std::cerr << "</item>" << std::endl;
         }
       }
 
@@ -577,6 +693,7 @@ namespace foo {
     }
 
     grammar_t read_grammar(std::string const &filename) {
+      trace();
       std::ifstream fin{filename};
       auto grammar = grammar_t{};
       RANGES_FOR (auto && line, ranges::lines(fin)) {
@@ -588,7 +705,8 @@ namespace foo {
         ss.erase(ss.begin());
         grammar.add_rule(rule_t{lhs, ss, prob});
       }
-      grammar.sort();
+      // grammar.sort();
+      grammar.index();
       return grammar;
     }
 
