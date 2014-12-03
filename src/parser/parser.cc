@@ -569,14 +569,13 @@ namespace foo {
                 for (auto const & right_item : right) {
                   auto state = left_item.state().next(right_item.rule().lhs());
                   if (state) {
+                    chart.update(state,
+                                 left_item.backpointers() + bp,
+                                 i,
+                                 i + j,
+                                 left_item.weight() * right_item.weight());
                     auto rule = state.end();
-                    if (rule == nullptr) {
-                      chart.update(state,
-                                   left_item.backpointers() + bp,
-                                   i,
-                                   i + j,
-                                   left_item.weight() * right_item.weight());
-                    } else {
+                    if (rule != nullptr) {
                       chart.complete(*rule,
                                      left_item.backpointers() + bp,
                                      i,
@@ -646,10 +645,8 @@ namespace foo {
               if (state) {
                 log("valid state");
                 auto rule = state.end();
-                if (rule == nullptr) {
-                  log("not finished yet");
-                  chart.update(state, {bp}, i, j, item.weight());
-                } else {
+                chart.update(state, {bp}, i, j, item.weight());
+                if (rule != nullptr) {
                   log("complete state");
                   bool upd = chart.complete(*rule, {bp}, i, j, item.weight() * rule->prob());
                   updated = upd || updated;
