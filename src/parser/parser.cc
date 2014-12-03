@@ -703,7 +703,8 @@ namespace foo {
         auto ss = split(s, " ");
         auto lhs = ss.front();
         ss.erase(ss.begin());
-        grammar.add_rule(rule_t{lhs, ss, prob});
+        if (lhs != ss.front() || ss.size() > 1)
+          grammar.add_rule(rule_t{lhs, ss, prob});
       }
       // grammar.sort();
       grammar.index();
