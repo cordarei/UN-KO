@@ -12,6 +12,7 @@
 
 #include <range/v3/algorithm/for_each.hpp>
 #include <range/v3/algorithm/find_if.hpp>
+#include <range/v3/algorithm/find.hpp>
 #include <range/v3/view/to_container.hpp>
 #include <range/v3/view/zip.hpp>
 #include <range/v3/view/transform.hpp>
@@ -119,6 +120,14 @@ namespace foo {
     bool operator!=(rule_t const &left, rule_t const &right) {
       return !(left == right);
     }
+    std::ostream & operator<<(std::ostream & os, rule_t const &r) {
+      os << r.lhs() << " -> [";
+      for (auto && s : r.rhs()) {
+        os << " " << s;
+      }
+      os << " ](" << r.prob() << ")";
+      return os;
+    }
 
     //
     class grammar_t {
@@ -143,11 +152,12 @@ namespace foo {
 
       auto find_lhs() const;
 
-      auto find_left_corner(std::string const &label) const {
-        auto empty = std::vector<rule_t const *>{};
+      decltype(auto) find_left_corner(std::string const &label) const {
+        static auto const empty = std::vector<rule_t const *>{};
         auto it = left_corner_map_.find(label);
-        auto & rules = (it == left_corner_map_.end() ? empty : it->second);
-        return ranges::view::transform(rules, [](rule_t const *r) { return *r; });
+        auto const & rules = (it == left_corner_map_.end() ? empty : it->second);
+        // return ranges::view::transform(rules, [](rule_t const *r) { return std::cref(*r); });
+        return rules;
       }
 
     private:
@@ -176,9 +186,17 @@ namespace foo {
           : rule_{&r}, backpointers_{std::move(bps)}, begin_{b}, end_{e}, weight_{w}
         {}
         item_t(item_t const &) = default;
-        item_t(item_t &&) = default;
+        item_t(item_t &&o) : rule_{o.rule_}, backpointers_{std::move(o.backpointers_)}, begin_{o.begin_}, end_{o.end_}, weight_{o.weight_} {trace(); log(rule_);}
         item_t & operator=(item_t const &) = default;
-        item_t & operator=(item_t &&) = default;
+        item_t & operator=(item_t &&o) {
+          trace();
+          rule_ = o.rule_;
+          backpointers_ = std::move(o.backpointers_);
+          begin_ = o.begin_;
+          end_ = o.end_;
+          weight_ = o.weight_;
+          return *this;
+        }
 
         std::string const & label() const { return rule_->lhs(); }
         rule_t const & rule() const { return *rule_; }
@@ -188,6 +206,25 @@ namespace foo {
         double weight() const { return weight_; }
 
         bool complete() const { return backpointers_.size() == rule_->rhs().size(); }
+        std::string next() const {
+          return (complete() ? "" : rule_->rhs()[backpointers_.size()]);
+        }
+
+        bool operator==(item_t const &other) {
+          if (complete() != other.complete())
+            return false;
+          if (complete() && label() != other.label())
+            return false;
+          if (!complete() && (&rule() != &other.rule()))
+            return false;
+          if (backpointers().size() != other.backpointers().size())
+            return false;
+          if (begin() != other.begin() || end() != other.end())
+            return false;
+
+          return true;
+        }
+        bool operator!=(item_t const &other) { return !(*this == other); }
 
       private:
         rule_t const * rule_;
@@ -197,7 +234,18 @@ namespace foo {
         double weight_;
       };
 
-      using cell_t = std::vector<item_t>;
+      class cell_t : std::pair<std::vector<item_t>, std::vector<item_t>> {
+      public:
+        using base_type = std::pair<std::vector<item_t>, std::vector<item_t>>;
+        using base_type::base_type;
+        cell_t() : base_type{{}, {}} {}
+
+        std::vector<item_t> const & complete() const { return this->first; }
+        std::vector<item_t> const & incomplete() const { return this->second; }
+        std::vector<item_t> & complete() { return this->first; }
+        std::vector<item_t> & incomplete() { return this->second; }
+      };
+      // using cell_t = std::vector<item_t>;
 
       explicit chart_t(size_t n) {
         chart_.resize(n);
@@ -209,29 +257,49 @@ namespace foo {
       cell_t const & operator[](std::pair<size_t, size_t> p) const {
         return cell(p.first, p.second);
       }
+
       bool update(rule_t const & rule, item_t::backpointers_t backpointers, size_t begin, size_t end, double weight) {
-        auto & cell = this->cell(begin, end);
+        log("enter |" << rule << "| " << backpointers.size() << " " << begin << " " << end << " " << weight);
         auto item = item_t{rule, std::move(backpointers), begin, end, weight};
-        auto prev = ranges::find_if(cell, [&](auto && it) { return &item.rule() == &it.rule(); });
-        if (prev == cell.end()) {
-          cell.push_back(std::move(item));
-          return true;
+        auto complete = item.complete();
+        auto & cell = this->cell(begin, end);
+        auto & list = (complete ? cell.complete() : cell.incomplete());
+        log("cell size: " << list.size());
+
+        // auto prev = ranges::find_if(cell, [&](auto && it) { return match_item(it, item); });
+        auto prev = ranges::find(list, item);
+        if (prev == list.end()) {
+          log("adding new item " << begin << " " << end << " " << weight << " complete? " << (item.complete() ? "yes" : "no") << " :: |" << rule << "|");
+          list.push_back(std::move(item));
+          log("new item address: " << &list.back());
+          return complete;
         }
         if (prev->weight() < weight) {
+          log("updating previous item "<< begin << " " << end << " " << weight << " prev weight: " << prev->weight() << " complete? " << (item.complete() ? "yes" : "no") << " :: |" << item.rule() << "| :: |" << prev->rule() << "|");
           *prev = std::move(item);
-          return true;
+          return complete;
         }
+        log("no update");
 
         return false;
       }
 
     private:
       cell_t const & cell(size_t i, size_t j) const {
-        return chart_[i][j];
+        return chart_[i][j - i - 1];
       }
       cell_t & cell(size_t i, size_t j) {
-        return chart_[i][j];
+        return chart_[i][j - i - 1];
       }
+      // bool match_item(item_t const &prev, item_t const &replace) {
+      //   if (prev.complete() != replace.complete()) {
+      //     return false;
+      //   } else if (replace.complete()) {
+      //     return prev.label() == replace.label();
+      //   } else {
+      //     return &prev.rule() == &replace.rule();
+      //   }
+      // }
 
       using row_t = std::vector<cell_t>;
       std::vector<row_t> chart_;
@@ -276,48 +344,64 @@ namespace foo {
       parser_t(grammar_t grammar) : grammar_{std::move(grammar)} {}
 
       tree_t parse(std::vector<std::string> const & words, std::vector<std::string> const & tags) const {
+        trace();
         size_t const n = tags.size();
         chart_t chart{n};
+        log("initialized chart");
 
         auto lexical_rules =
           ranges::view::zip(tags,words)
-          | ranges::view::transform([](auto && tup) { return rule_t{std::get<0>(tup), {std::get<1>(tup)}, 1.0}; })
+          | ranges::view::transform([](auto && tup) { return rule_t{std::get<0>(tup), {/*std::get<1>(tup)*/}, 1.0}; })
           | ranges::view::to_vector;
+        log("created lexical rules");
 
         for (size_t i = 0; i < n; ++i) {
+          std::cerr << "Filling cell (" << i << ", " << (i + 1) << ")" << std::endl;
+          log("Filling cell (" << i << ", " << (i + 1) << ")");
           //add tag[i] as complete span and all rules allowed by tag[i] as (in)complete spans to chart
           chart.update(lexical_rules[i], {}, i, i + 1, 1.0);
           introduce_items(chart, i, i + 1);
+          log("Filled cell with " << (chart[{i, i + 1}].complete().size()) << " complete items and " <<  (chart[{i, i + 1}].incomplete().size()) << " incomplete items.");
+          std:: cerr << "Filled cell with " << (chart[{i, i + 1}].complete().size()) << " complete items and " <<  (chart[{i, i + 1}].incomplete().size()) << " incomplete items." << std::endl;
         }
+        log("finished initializing terminal cells");
 
         for (size_t j = 2; j <= n; ++j) {
           for (size_t i = 0; i <= (n - j); ++i) {
+            std::cerr << "Filling cell (" << i << ", " << (i + j) << ")" << std::endl;
+            log("Filling cell (" << i << ", " << (i + j) << ")");
             for (size_t k = 1; k < j; ++k) {
               //add all (in)complete spans created by traversing the cross product of left x right
-              auto & left = chart[{i, i + k}];
-              auto & right = chart[{i + k, i + j}];
+              auto & left = chart[{i, i + k}].incomplete();
+              auto & right = chart[{i + k, i + j}].complete();
 
               for (auto const & left_item : left) {
-                if (!left_item.complete()) {
-                  for (auto const & right_item : right) {
-                    if (right_item.complete()) {
-                      chart.update(left_item.rule(),
-                                   left_item.backpointers() + &right_item,
-                                   i,
-                                   i + j,
-                                   left_item.weight() * right_item.weight());
-                    }
+                for (auto const & right_item : right) {
+                  if (right_item.label() == left_item.next()) {
+                    chart.update(left_item.rule(),
+                                 left_item.backpointers() + &right_item,
+                                 i,
+                                 i + j,
+                                 left_item.weight() * right_item.weight());
                   }
                 }
               }
-              //then add (transitively) all (in)complete spans createable by the complete spans in chart[i,j]
-              introduce_items(chart, i, j);
             }
+            //then add (transitively) all (in)complete spans createable by the complete spans in chart[i,j]
+            introduce_items(chart, i, i + j);
+            log("Filled cell with " << (chart[{i, i + j}].complete().size()) << " complete items and " <<  (chart[{i, i + j}].incomplete().size()) << " incomplete items.");
+            std::cerr << "Filled cell with " << (chart[{i, i + j}].complete().size()) << " complete items and " <<  (chart[{i, i + j}].incomplete().size()) << " incomplete items." << std::endl;
           }
         }
+        log("finished filling chart");
+        std::cerr << "Finished parsing. Top complete items: ";
+        for (auto && item : chart[{0, n}].complete()) {
+          std::cerr << " " << item.label() << "=" << item.weight();
+        }
+        std::cerr << std::endl;
 
-        auto it = ranges::find_if(chart[{0, n}], [](auto && item) { return item.label() == "ROOT" || item.label() == "TOP"; });
-        if (it == chart[{0, n}].end()) {
+        auto it = ranges::find_if(chart[{0, n}].complete(), [](auto && item) { return item.label() == "ROOT" || item.label() == "TOP"; });
+        if (it == chart[{0, n}].complete().end()) {
           return {"ERROR"};
         } else {
           return make_tree(*it);
@@ -334,16 +418,28 @@ namespace foo {
 
     private:
       void introduce_items(chart_t & chart, size_t i, size_t j) const {
+        trace();
+          // for (auto const & item : chart[{i,j}].complete()) {
+          //   log("check complete item address " << &item << " " << &item.rule());
+          // }
         auto done = false;
         while (!done) {
+          log("enter while loop");
           auto updated = false;
-          for (auto && item : chart[{i,j}]) {
-            if (item.complete()) {
-              RANGES_FOR (auto && rule, grammar_.find_left_corner(item.label())) {
-                updated = chart.update(rule, {&item}, i, j, rule.prob() * item.weight()) || updated;
-              }
+          for (auto const & item : chart[{i,j}].complete()) {
+            log("complete item " << &item << " " << &item.rule());
+            auto const & category = item.label();
+            log("introducing rules for complete edge: " << category);
+            size_t count = 0;
+            RANGES_FOR (rule_t const* rule, grammar_.find_left_corner(category)) {
+              log("updating with rule " << rule);
+              ++count;
+              updated = chart.update(*rule, {&item}, i, j, rule->prob() * item.weight()) || updated;
+              log("updated? " << (updated ? "yes" : "no"));
               if (updated) break;
             }
+            log("explored " << count << " rules.");
+            if (updated) break;
           }
           done = !updated;
         }
@@ -378,18 +474,21 @@ namespace foo {
         auto ss = split(s, " ");
         auto lhs = ss.front();
         ss.erase(ss.begin());
-        grammar.add_rule(rule_t{std::move(lhs), std::move(ss), prob});
+        grammar.add_rule(rule_t{lhs, ss, prob});
       }
       grammar.sort();
       return grammar;
     }
 
     int run(docopt_t const & args) {
+      trace();
       auto conf = foo::classifier::make_config(args);
       auto parser = parser_t{read_grammar(conf.model_file)};
       std::ofstream fout{conf.output_file};
 
+      auto count = size_t{0};
       foreach_sentence(conf.input_file, [&](auto const & js) mutable {
+          std::cerr << "Parsing sentence " << count++ << "..." << std::endl;
           auto words = make_vector(js["words"].array_items(), &json::string_value);
           auto tags  = make_vector(js["tags" ].array_items(), &json::string_value);
           auto tree = parser.parse(words, tags);

@@ -87,10 +87,27 @@ namespace {
   }
 
 
-#if 0
-#define log(x) std::cerr << __FILE__ << "::" << __LINE__ << " " << __FUNCTION__ << " -- " << x << std::endl
+  struct tracer_t {
+    using literal_t = char const * const;
+    literal_t file;
+    literal_t function;
+    int line;
+    tracer_t(literal_t fi, literal_t fun, int ln) : file{fi}, function{fun}, line{ln} {
+      std::cerr << " (" << file << "::" << line << " " << function << " -- enter.) " << std::endl;
+    }
+    ~tracer_t() {
+      std::cerr << " (" << file << "::" << line << " " << function << " -- leave.) " << std::endl;
+    }
+  };
+
+  //#define VERBOSE
+
+#ifdef VERBOSE
+#define log(x) std::cerr << __FILE__ << "::" << __LINE__ << " " << __PRETTY_FUNCTION__ << " -- " << x << std::endl
+#define trace() tracer_t trace_42{__FILE__, __PRETTY_FUNCTION__, __LINE__}
 #else
 #define log(x)
+#define trace()
 #endif
 }
 
