@@ -674,7 +674,7 @@ namespace foo {
       void make_tree_helper(chart_t const & chart, tree_t & parent, chart_t::complete_item_t const & item) const {
         auto & child = parent.add_child(item.label());
         for (auto bp : item.backpointers()) {
-          std::cerr << "<item rule=|" << item.rule() << "| bp=|"<< bp.i << "," << bp.j << "," << bp.k << "|>" << std::endl;
+          std::cerr << "<item rule=|" << item.rule() << "| bp=|"<< bp.i << "," << bp.j << "," << bp.k << "| w=|" << item.weight() << "|>" << std::endl;
           make_tree_helper(chart, child, chart[bp]);
           std::cerr << "</item>" << std::endl;
         }
