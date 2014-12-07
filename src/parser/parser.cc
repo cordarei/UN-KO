@@ -1,6 +1,7 @@
 #include "parser.h"
 
 #include <utility>
+#include <chrono>
 #include <memory>
 #include <new>
 #include <functional>
@@ -596,11 +597,11 @@ namespace foo {
           }
         }
         log("finished filling chart");
-        std::cerr << "Finished parsing. Top complete items: ";
-        for (auto && item : chart[{0, n}].complete()) {
-          std::cerr << " " << item.label() << "=" << item.weight();
-        }
-        std::cerr << std::endl;
+        // std::cerr << "Finished parsing. Top complete items: ";
+        // for (auto && item : chart[{0, n}].complete()) {
+        //   std::cerr << " " << item.label() << "=" << item.weight();
+        // }
+        // std::cerr << std::endl;
 
         auto it = ranges::find_if(chart[{0, n}].complete(), [](auto && item) { return item.label() == "ROOT" || item.label() == "TOP"; });
         if (it == chart[{0, n}].complete().end()) {
@@ -613,20 +614,20 @@ namespace foo {
       }
 
       tree_t make_tree(chart_t const & chart, std::vector<std::string> const & words, chart_t::complete_item_t const & item) const {
-        std::cerr << "make_tree() enter" << std::endl;
-        std::cerr << "<root rule=|" << item.rule() << "|>" << std::endl;
+        // std::cerr << "make_tree() enter" << std::endl;
+        // std::cerr << "<root rule=|" << item.rule() << "|>" << std::endl;
         tree_t tree = tree_t{item.label()};
         for (auto bp : item.backpointers()) {
           // auto & ch = chart[bp];
           // std::cerr << "  (" << bp.i << "," << bp.j << "," << bp.k << ") : " << ch.rule() << std::endl;
-          std::cerr << "<item rule=|" << item.rule() << "| bp=|"<< bp.i << "," << bp.j << "," << bp.k << "|>" << std::endl;
+          // std::cerr << "<item rule=|" << item.rule() << "| bp=|"<< bp.i << "," << bp.j << "," << bp.k << "|>" << std::endl;
           make_tree_helper(chart, words, tree, chart[bp]);
-          std::cerr << "</item>" << std::endl;
+          // std::cerr << "</item>" << std::endl;
         }
         if (item.backpointers().empty()) {
           tree.add_child(words[item.begin()]);
         }
-        std::cerr << "</root>" << std::endl;
+        // std::cerr << "</root>" << std::endl;
         return tree;
       }
 
@@ -676,9 +677,9 @@ namespace foo {
       void make_tree_helper(chart_t const & chart, std::vector<std::string> const & words, tree_t & parent, chart_t::complete_item_t const & item) const {
         auto & child = parent.add_child(item.label());
         for (auto bp : item.backpointers()) {
-          std::cerr << "<item rule=|" << item.rule() << "| bp=|"<< bp.i << "," << bp.j << "," << bp.k << "| w=|" << item.weight() << "|>" << std::endl;
+          // std::cerr << "<item rule=|" << item.rule() << "| bp=|"<< bp.i << "," << bp.j << "," << bp.k << "| w=|" << item.weight() << "|>" << std::endl;
           make_tree_helper(chart, words, child, chart[bp]);
-          std::cerr << "</item>" << std::endl;
+          // std::cerr << "</item>" << std::endl;
         }
         if (item.backpointers().empty()) {
           child.add_child(words[item.begin()]);
@@ -716,6 +717,29 @@ namespace foo {
       return grammar;
     }
 
+    class timer
+    {
+    private:
+      std::chrono::high_resolution_clock::time_point start_;
+    public:
+      timer()
+      {
+        reset();
+      }
+      void reset()
+      {
+        start_ = std::chrono::high_resolution_clock::now();
+      }
+      std::chrono::milliseconds elapsed() const
+      {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_);
+      }
+      friend std::ostream &operator<<(std::ostream &sout, timer const &t)
+      {
+        return sout << t.elapsed().count() << "ms";
+      }
+    };
+
     int run(docopt_t const & args) {
       trace();
       auto conf = foo::classifier::make_config(args);
@@ -727,7 +751,10 @@ namespace foo {
           std::cerr << "Parsing sentence " << count++ << "..." << std::endl;
           auto words = make_vector(js["words"].array_items(), &json::string_value);
           auto tags  = make_vector(js["tags" ].array_items(), &json::string_value);
+          timer t;
           auto tree = parser.parse(words, tags);
+          auto elapsed = t.elapsed().count();
+          std::cerr << "Parsed " << words.size() << " words in " << elapsed << "ms." << std::endl;
           fout << tree << std::endl;
         });
 
