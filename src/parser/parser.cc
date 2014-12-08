@@ -15,6 +15,8 @@
 #include <range/v3/algorithm/for_each.hpp>
 #include <range/v3/algorithm/find_if.hpp>
 #include <range/v3/algorithm/find.hpp>
+#include <range/v3/algorithm/lower_bound.hpp>
+#include <range/v3/algorithm/upper_bound.hpp>
 #include <range/v3/view/to_container.hpp>
 #include <range/v3/view/zip.hpp>
 #include <range/v3/view/transform.hpp>
@@ -411,25 +413,25 @@ namespace foo {
       }
 
       bool complete(rule_t const & rule, backpointers_t backpointers, size_t begin, size_t end, double weight) {
-        log("enter");
+        // log("enter");
         auto & list = this->cell(begin, end).complete();
         auto prev = ranges::find_if(list, [&](auto const & item) { return item.rule().lhs() == rule.lhs(); });
         if (prev == list.end()) {
-          log("prev == list.end()");
+          // log("prev == list.end()");
           list.emplace_back(rule, std::move(backpointers), begin, end, weight);
           return true;
         }
         if (prev->weight() < weight) {
-          log("prev->weight() < weight");
+          // log("prev->weight() < weight");
           *prev = complete_item_t{rule, std::move(backpointers), begin, end, weight};
           return true;
         }
-        log("no update");
+        // log("no update");
         return false;
       }
 
       bool update(state_t const &state, backpointers_t backpointers, size_t begin, size_t end, double weight) {
-        log("enter");
+        // log("enter");
         auto & list = this->cell(begin, end).incomplete();
         auto prev = ranges::find_if(list, [&](auto const & item) { return item.state() == state; });
         if (prev == list.end()) {
@@ -534,7 +536,7 @@ namespace foo {
     public:
       parser_t(grammar_t grammar) : grammar_{std::move(grammar)} {}
 
-      tree_t parse(std::vector<std::string> const & words, std::vector<std::string> const & tags) const {
+      tree_t parse(std::vector<std::string> const & words, std::vector<std::string> const & tags, std::vector<size_t> const & split_points) const {
         trace();
         size_t const n = tags.size();
         chart_t chart{n};
@@ -561,6 +563,12 @@ namespace foo {
           for (size_t i = 0; i <= (n - j); ++i) {
             //std::cerr << "Filling cell (" << i << ", " << (i + j) << ")" << std::endl;
             log("Filling cell (" << i << ", " << (i + j) << ")");
+            auto cross = cross_independent_span(i, j, split_points);
+            auto do_incomplete = !cross || i == 0;
+            auto do_complete = !cross || (i == 0 && j == n);
+            log("Constraints: cross:" << cross << " do_incomplete:" << do_incomplete << " do_complete:" << do_complete);
+            if (!do_incomplete)
+              continue;
             for (size_t k = 1; k < j; ++k) {
               //add all (in)complete spans created by traversing the cross product of left x right
               auto & left = chart[{i, i + k}].incomplete();
@@ -578,7 +586,7 @@ namespace foo {
                                  i + j,
                                  left_item.weight() * right_item.weight());
                     auto rule = state.end();
-                    if (rule != nullptr) {
+                    if (rule != nullptr && do_complete) {
                       chart.complete(*rule,
                                      left_item.backpointers() + bp,
                                      i,
@@ -591,7 +599,8 @@ namespace foo {
               }
             }
             //then add (transitively) all (in)complete spans createable by the complete spans in chart[i,j]
-            introduce_items(chart, i, i + j);
+            if (do_complete)
+              introduce_items(chart, i, i + j);
             log("Filled cell with " << (chart[{i, i + j}].complete().size()) << " complete items and " <<  (chart[{i, i + j}].incomplete().size()) << " incomplete items.");
             //std::cerr << "Filled cell with " << (chart[{i, i + j}].complete().size()) << " complete items and " <<  (chart[{i, i + j}].incomplete().size()) << " incomplete items." << std::endl;
           }
@@ -613,25 +622,13 @@ namespace foo {
         }
       }
 
-      tree_t make_tree(chart_t const & chart, std::vector<std::string> const & words, chart_t::complete_item_t const & item) const {
-        // std::cerr << "make_tree() enter" << std::endl;
-        // std::cerr << "<root rule=|" << item.rule() << "|>" << std::endl;
-        tree_t tree = tree_t{item.label()};
-        for (auto bp : item.backpointers()) {
-          // auto & ch = chart[bp];
-          // std::cerr << "  (" << bp.i << "," << bp.j << "," << bp.k << ") : " << ch.rule() << std::endl;
-          // std::cerr << "<item rule=|" << item.rule() << "| bp=|"<< bp.i << "," << bp.j << "," << bp.k << "|>" << std::endl;
-          make_tree_helper(chart, words, tree, chart[bp]);
-          // std::cerr << "</item>" << std::endl;
-        }
-        if (item.backpointers().empty()) {
-          tree.add_child(words[item.begin()]);
-        }
-        // std::cerr << "</root>" << std::endl;
-        return tree;
+    private:
+      bool cross_independent_span(size_t i, size_t j, std::vector<size_t> const & split_points) const {
+        auto low = ranges::lower_bound(split_points, i);
+        auto high = ranges::upper_bound(split_points, j);
+        return low == high && high != split_points.end();
       }
 
-    private:
       void introduce_items(chart_t & chart, size_t i, size_t j) const {
         trace();
           // for (auto const & item : chart[{i,j}].complete()) {
@@ -639,21 +636,21 @@ namespace foo {
           // }
         auto done = false;
         while (!done) {
-          log("enter while loop");
+          // log("enter while loop");
           auto updated = false;
           auto bp = chart_t::backpointer{i, j, 0};
           for (auto const & item : chart[{i,j}].complete()) {
-            log("complete item " << &item << " " << &item.rule());
+            // log("complete item " << &item << " " << &item.rule());
             auto const & category = item.label();
-            log("introducing rules for complete edge: " << category);
+            // log("introducing rules for complete edge: " << category);
             for (auto const & trienode : grammar_.trie().roots()) {
               auto state = grammar_.trie().start(trienode.key()).next(category);
               if (state) {
-                log("valid state");
+                // log("valid state");
                 auto rule = state.end();
                 chart.update(state, {bp}, i, j, item.weight());
                 if (rule != nullptr) {
-                  log("complete state");
+                  // log("complete state");
                   bool upd = chart.complete(*rule, {bp}, i, j, item.weight() * rule->prob());
                   updated = upd || updated;
                 }
@@ -672,6 +669,24 @@ namespace foo {
           }
           done = !updated;
         }
+      }
+
+      tree_t make_tree(chart_t const & chart, std::vector<std::string> const & words, chart_t::complete_item_t const & item) const {
+        // std::cerr << "make_tree() enter" << std::endl;
+        // std::cerr << "<root rule=|" << item.rule() << "|>" << std::endl;
+        tree_t tree = tree_t{item.label()};
+        for (auto bp : item.backpointers()) {
+          // auto & ch = chart[bp];
+          // std::cerr << "  (" << bp.i << "," << bp.j << "," << bp.k << ") : " << ch.rule() << std::endl;
+          // std::cerr << "<item rule=|" << item.rule() << "| bp=|"<< bp.i << "," << bp.j << "," << bp.k << "|>" << std::endl;
+          make_tree_helper(chart, words, tree, chart[bp]);
+          // std::cerr << "</item>" << std::endl;
+        }
+        if (item.backpointers().empty()) {
+          tree.add_child(words[item.begin()]);
+        }
+        // std::cerr << "</root>" << std::endl;
+        return tree;
       }
 
       void make_tree_helper(chart_t const & chart, std::vector<std::string> const & words, tree_t & parent, chart_t::complete_item_t const & item) const {
@@ -751,8 +766,13 @@ namespace foo {
           std::cerr << "Parsing sentence " << count++ << "..." << std::endl;
           auto words = make_vector(js["words"].array_items(), &json::string_value);
           auto tags  = make_vector(js["tags" ].array_items(), &json::string_value);
+          auto split_points = std::vector<size_t>{};
+          if (!js["split_points"].is_null()) {
+            split_points = make_vector(js["split_points"].array_items(), [](auto && sp) { return static_cast<size_t>(sp.int_value()); });
+            ranges::sort(split_points);
+          }
           timer t;
-          auto tree = parser.parse(words, tags);
+          auto tree = parser.parse(words, tags, split_points);
           auto elapsed = t.elapsed().count();
           std::cerr << "Parsed " << words.size() << " words in " << elapsed << "ms." << std::endl;
           fout << tree << std::endl;
