@@ -531,6 +531,19 @@ namespace foo {
       std::vector<child_t> children_;
     };
 
+    template <typename T>
+    std::ostream &operator<<(std::ostream &os, std::vector<T> vec) {
+      auto it = vec.begin();
+      auto end = vec.end();
+      os << "[";
+      os << *it++;
+      for (; it != end; ++it) {
+        os << ", " << *it;
+      }
+      os << "]";
+      return os;
+    }
+
     //
     class parser_t {
     public:
@@ -541,6 +554,7 @@ namespace foo {
         size_t const n = tags.size();
         chart_t chart{n};
         log("initialized chart");
+        log("split points: " << split_points);
 
         auto lexical_rules =
           tags
@@ -563,7 +577,7 @@ namespace foo {
           for (size_t i = 0; i <= (n - j); ++i) {
             //std::cerr << "Filling cell (" << i << ", " << (i + j) << ")" << std::endl;
             log("Filling cell (" << i << ", " << (i + j) << ")");
-            auto cross = cross_independent_span(i, j, split_points);
+            auto cross = cross_independent_span(i, i + j, split_points);
             auto do_incomplete = !cross || i == 0;
             auto do_complete = !cross || (i == 0 && j == n);
             log("Constraints: cross:" << cross << " do_incomplete:" << do_incomplete << " do_complete:" << do_complete);
@@ -624,9 +638,11 @@ namespace foo {
 
     private:
       bool cross_independent_span(size_t i, size_t j, std::vector<size_t> const & split_points) const {
-        auto low = ranges::lower_bound(split_points, i);
-        auto high = ranges::upper_bound(split_points, j);
-        return low == high && high != split_points.end();
+        log(i << " " << j << " " << split_points);
+        for (auto sp : split_points)
+          if (i < sp && j > sp)
+            return true;
+        return false;
       }
 
       void introduce_items(chart_t & chart, size_t i, size_t j) const {
