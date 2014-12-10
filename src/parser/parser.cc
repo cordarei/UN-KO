@@ -787,6 +787,16 @@ namespace foo {
             split_points = make_vector(js["split_points"].array_items(), [](auto && sp) { return static_cast<size_t>(sp.int_value()); });
             ranges::sort(split_points);
           }
+          if (conf.parse_oracle) {
+            split_points = js["parse"]["edges"][1][1].array_items()
+              | ranges::view::transform(&json::int_value)
+              | ranges::view::transform([&](auto i) {
+                  return static_cast<size_t>(js["parse"]["spans"][i][2].int_value());
+                })
+              | ranges::view::to_vector;
+            split_points.erase(--split_points.end());
+            log("Using oracle; constraints: " << split_points);
+          }
           timer t;
           auto tree = parser.parse(words, tags, split_points);
           if (tree.label() == "ERROR" && !split_points.empty()) {

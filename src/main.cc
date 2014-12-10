@@ -23,6 +23,7 @@ u8R"(  foo
     --feat-global      Global features
     --feat-local       Local Features
     --svm-format       Output instances in SVM format
+    --oracle           Parse using oracle constraints
 )";
 constexpr auto VERSION = u8"foo 0.0.0";
 

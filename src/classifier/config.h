@@ -35,6 +35,7 @@ namespace foo {
       classifier_type_t classifier;
       update_t update;
       output_format_t output_format;
+      bool parse_oracle;
       std::string input_file;
       std::string output_file; //optional
       std::string model_file;
@@ -78,6 +79,8 @@ namespace foo {
       if (check_docopt_flag(args, "--svm-format")) {
         conf.output_format = output_format_t::svm;
       }
+
+      conf.parse_oracle = check_docopt_flag(args, "--oracle");
 
       return conf;
     }
