@@ -789,6 +789,10 @@ namespace foo {
           }
           timer t;
           auto tree = parser.parse(words, tags, split_points);
+          if (tree.label() == "ERROR" && !split_points.empty()) {
+            std::cout << "Re-parsing without constraints." << std::endl;
+            tree = parser.parse(words, tags, {});
+          }
           auto elapsed = t.elapsed().count();
           std::cerr << "Parsed " << words.size() << " words in " << elapsed << "ms." << std::endl;
           fout << tree << std::endl;
